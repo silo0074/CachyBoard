@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/devuser/projects/Keyboard_Virtual_Wayland/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

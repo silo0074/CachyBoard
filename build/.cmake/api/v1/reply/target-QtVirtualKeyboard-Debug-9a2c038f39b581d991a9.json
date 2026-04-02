@@ -1,0 +1,673 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "QtVirtualKeyboard"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_executable",
+			"target_link_libraries",
+			"set_target_properties",
+			"include",
+			"find_package",
+			"set_property",
+			"__find_dependency_common",
+			"find_dependency",
+			"_qt_internal_find_third_party_dependencies",
+			"_qt_internal_find_qt_dependencies",
+			"target_include_directories"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt",
+			"/usr/lib/cmake/Qt6WaylandClient/Qt6WaylandClientTargets.cmake",
+			"/usr/lib/cmake/Qt6WaylandClient/Qt6WaylandClientConfig.cmake",
+			"/usr/lib/cmake/Qt6/Qt6Config.cmake",
+			"/usr/lib/cmake/Qt6Widgets/Qt6WidgetsTargets.cmake",
+			"/usr/lib/cmake/Qt6Widgets/Qt6WidgetsConfig.cmake",
+			"/usr/share/cmake/Modules/FindOpenGL.cmake",
+			"/usr/lib/cmake/Qt6/FindWrapOpenGL.cmake",
+			"/usr/share/cmake/Modules/CMakeFindDependencyMacro.cmake",
+			"/usr/lib/cmake/Qt6/QtPublicDependencyHelpers.cmake",
+			"/usr/lib/cmake/Qt6Gui/Qt6GuiDependencies.cmake",
+			"/usr/lib/cmake/Qt6Gui/Qt6GuiConfig.cmake",
+			"/usr/lib/cmake/Qt6Widgets/Qt6WidgetsDependencies.cmake"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 49,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 62,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 9,
+				"parent" : 0
+			},
+			{
+				"file" : 3,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 3,
+				"line" : 256,
+				"parent" : 4
+			},
+			{
+				"file" : 2,
+				"parent" : 5
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 65,
+				"parent" : 6
+			},
+			{
+				"file" : 1,
+				"parent" : 7
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 70,
+				"parent" : 8
+			},
+			{
+				"command" : 4,
+				"file" : 3,
+				"line" : 256,
+				"parent" : 4
+			},
+			{
+				"file" : 5,
+				"parent" : 10
+			},
+			{
+				"command" : 3,
+				"file" : 5,
+				"line" : 65,
+				"parent" : 11
+			},
+			{
+				"file" : 4,
+				"parent" : 12
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 70,
+				"parent" : 13
+			},
+			{
+				"command" : 3,
+				"file" : 5,
+				"line" : 50,
+				"parent" : 11
+			},
+			{
+				"file" : 12,
+				"parent" : 15
+			},
+			{
+				"command" : 9,
+				"file" : 12,
+				"line" : 50,
+				"parent" : 16
+			},
+			{
+				"command" : 7,
+				"file" : 9,
+				"line" : 142,
+				"parent" : 17
+			},
+			{
+				"command" : 6,
+				"file" : 8,
+				"line" : 125,
+				"parent" : 18
+			},
+			{
+				"command" : 4,
+				"file" : 8,
+				"line" : 93,
+				"parent" : 19
+			},
+			{
+				"file" : 11,
+				"parent" : 20
+			},
+			{
+				"command" : 3,
+				"file" : 11,
+				"line" : 50,
+				"parent" : 21
+			},
+			{
+				"file" : 10,
+				"parent" : 22
+			},
+			{
+				"command" : 8,
+				"file" : 10,
+				"line" : 37,
+				"parent" : 23
+			},
+			{
+				"command" : 7,
+				"file" : 9,
+				"line" : 36,
+				"parent" : 24
+			},
+			{
+				"command" : 6,
+				"file" : 8,
+				"line" : 125,
+				"parent" : 25
+			},
+			{
+				"command" : 4,
+				"file" : 8,
+				"line" : 93,
+				"parent" : 26
+			},
+			{
+				"file" : 7,
+				"parent" : 27
+			},
+			{
+				"command" : 4,
+				"file" : 7,
+				"line" : 13,
+				"parent" : 28
+			},
+			{
+				"file" : 6,
+				"parent" : 29
+			},
+			{
+				"command" : 5,
+				"file" : 6,
+				"line" : 837,
+				"parent" : 30
+			},
+			{
+				"command" : 2,
+				"file" : 6,
+				"line" : 835,
+				"parent" : 30
+			},
+			{
+				"command" : 10,
+				"file" : 0,
+				"line" : 60,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 10
+	},
+	"compileDependencies" : 
+	[
+		{
+			"backtrace" : 2,
+			"id" : "Qt6::Widgets::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "Qt6::WaylandClient::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "LayerShellQt::Interface::@6890427a1f51a3e7e1df"
+		}
+	],
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g -std=gnu++17"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-mno-direct-extern-access"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 2,
+					"define" : "QT_CORE_LIB"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "QT_GUI_LIB"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "QT_WAYLANDCLIENT_LIB"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "QT_WIDGETS_LIB"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 0,
+					"path" : "/home/devuser/projects/Keyboard_Virtual_Wayland/build/QtVirtualKeyboard_autogen/include"
+				},
+				{
+					"backtrace" : 33,
+					"path" : "/home/devuser/projects/Keyboard_Virtual_Wayland/build"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6/QtWidgets"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6/QtCore"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/lib/qt6/mkspecs/linux-g++"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6/QtGui"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6/QtWaylandClient"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					2,
+					2
+				],
+				"standard" : "17"
+			},
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2
+			]
+		},
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g"
+				},
+				{
+					"backtrace" : 2,
+					"fragment" : "-mno-direct-extern-access"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 2,
+					"define" : "QT_CORE_LIB"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "QT_GUI_LIB"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "QT_WAYLANDCLIENT_LIB"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "QT_WIDGETS_LIB"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 0,
+					"path" : "/home/devuser/projects/Keyboard_Virtual_Wayland/build/QtVirtualKeyboard_autogen/include"
+				},
+				{
+					"backtrace" : 33,
+					"path" : "/home/devuser/projects/Keyboard_Virtual_Wayland/build"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6/QtWidgets"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6/QtCore"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/lib/qt6/mkspecs/linux-g++"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6/QtGui"
+				},
+				{
+					"backtrace" : 2,
+					"isSystem" : true,
+					"path" : "/usr/include/qt6/QtWaylandClient"
+				}
+			],
+			"language" : "C",
+			"sourceIndexes" : 
+			[
+				5,
+				7
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"id" : "QtVirtualKeyboard_autogen_timestamp_deps::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 0,
+			"id" : "QtVirtualKeyboard_autogen::@6890427a1f51a3e7e1df"
+		}
+	],
+	"id" : "QtVirtualKeyboard::@6890427a1f51a3e7e1df",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-g",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "/usr/lib/libQt6Widgets.so.6.11.0",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "/usr/lib/libQt6WaylandClient.so.6.11.0",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "/usr/lib/libLayerShellQtInterface.so.6.6.3",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lwayland-client",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lm",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lXtst",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-lX11",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "/usr/lib/libwayland-client.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "/usr/lib/libwayland-cursor.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 14,
+				"fragment" : "/usr/lib/libQt6Gui.so.6.11.0",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 31,
+				"fragment" : "/usr/lib/libGLX.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 32,
+				"fragment" : "/usr/lib/libOpenGL.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 14,
+				"fragment" : "/usr/lib/libQt6Core.so.6.11.0",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX"
+	},
+	"linkLibraries" : 
+	[
+		{
+			"backtrace" : 2,
+			"id" : "Qt6::Widgets::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "Qt6::WaylandClient::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "LayerShellQt::Interface::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 2,
+			"fragment" : "wayland-client"
+		},
+		{
+			"backtrace" : 2,
+			"fragment" : "m"
+		},
+		{
+			"backtrace" : 2,
+			"fragment" : "Xtst"
+		},
+		{
+			"backtrace" : 2,
+			"fragment" : "X11"
+		}
+	],
+	"name" : "QtVirtualKeyboard",
+	"nameOnDisk" : "QtVirtualKeyboard",
+	"orderDependencies" : 
+	[
+		{
+			"id" : "Qt6::moc::@6890427a1f51a3e7e1df"
+		},
+		{
+			"id" : "Qt6::uic::@6890427a1f51a3e7e1df"
+		},
+		{
+			"id" : "QtVirtualKeyboard_autogen_timestamp_deps::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 0,
+			"id" : "QtVirtualKeyboard_autogen::@6890427a1f51a3e7e1df"
+		}
+	],
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				5,
+				7
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				3,
+				4,
+				6
+			]
+		},
+		{
+			"name" : "",
+			"sourceIndexes" : 
+			[
+				8
+			]
+		},
+		{
+			"name" : "CMake Rules",
+			"sourceIndexes" : 
+			[
+				9,
+				10,
+				11
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 0,
+			"compileGroupIndex" : 0,
+			"isGenerated" : true,
+			"path" : "build/QtVirtualKeyboard_autogen/mocs_compilation.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "main.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "VirtualKeyboard.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "VirtualKeyboard.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "build/wayland-virtual-keyboard-unstable-v1-client-protocol.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "build/wayland-virtual-keyboard-unstable-v1-protocol.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"isGenerated" : true,
+			"path" : "build/wayland-input-method-unstable-v1-client-protocol.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 1,
+			"isGenerated" : true,
+			"path" : "build/wayland-input-method-unstable-v1-protocol.c",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/QtVirtualKeyboard_autogen/timestamp",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/wayland-virtual-keyboard-unstable-v1-client-protocol.h.rule",
+			"sourceGroupIndex" : 3
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/wayland-input-method-unstable-v1-client-protocol.h.rule",
+			"sourceGroupIndex" : 3
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/QtVirtualKeyboard_autogen/timestamp.rule",
+			"sourceGroupIndex" : 3
+		}
+	],
+	"type" : "EXECUTABLE"
+}
