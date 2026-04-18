@@ -32,14 +32,14 @@ private:
 	void releaseAllKeys();
 	void updateKeyCaps();
 	void syncModifiers();
-
-	// UI Helpers
+	void updateButtonHighlights();
 	QPushButton *createKey(int keycode, const QString &label, const QString &shiftLabel = QString(), float stretch = 1.0);
 
 	int m_uinputFd = -1;
 	QWidget* m_dragHandle;
 	QPushButton *m_resizeHandle;
 	QSoundEffect* m_clickSound;
+	QTimer *m_syncTimer;
 
 	// Platform state
 	QPoint m_dragPosition;

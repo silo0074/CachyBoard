@@ -15,15 +15,19 @@
 #include <sys/ioctl.h>
 #include <vector>
 #include <tuple>
+#include <QTimer>
+#include <fcntl.h>
 
 VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	connect(this, &QWidget::destroyed, qApp, &QCoreApplication::quit);
+	m_syncTimer = new QTimer(this);
+	connect(m_syncTimer, &QTimer::timeout, this, &VirtualKeyboard::syncModifiers);
+	m_syncTimer->start(400); // Check every 200ms
 
 	// Basic setup
-	setWindowFlags(Qt::Window | Qt::Tool);
-	// setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
+	setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
 	setAttribute(Qt::WA_TranslucentBackground);
-
+	this->setMinimumSize(450, 200);
 	setMouseTracking(true);
 	initUinput();
 
@@ -147,8 +151,8 @@ void VirtualKeyboard::showEvent(QShowEvent *event) {
 			// Remove AnchorLeft/Right so width isn't forced to screen size
 			// Anchor to Bottom AND Left for 2D movement
 			// Explicitly use the Anchors constructor
-			// LayerShellQt::Window::Anchors anchors(LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorLeft);
-			// lsw->setAnchors(anchors);
+			LayerShellQt::Window::Anchors anchors(LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorLeft);
+			lsw->setAnchors(anchors);
 			lsw->setExclusiveZone(0);
 			
 			// Force the height so it doesn't fill the screen
@@ -181,12 +185,12 @@ void VirtualKeyboard::setupUI() {
 	QHBoxLayout *handleLayout = new QHBoxLayout(handle);
 	handleLayout->setContentsMargins(10, 0, 10, 0);
 	
-	QLabel *title = new QLabel("Keyboard Handle", handle);
+	QLabel *title = new QLabel("On-Screen Keyboard", handle);
 	title->setStyleSheet("color: #aaa; font-size: 11px; font-weight: bold;");
 	
 	QPushButton *closeBtn = new QPushButton("✕", handle);
 	// closeBtn->setFixedSize(24, 24);
-	closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 16px; }"
+	closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 16px;}"
 							"QPushButton:hover { color: #f44; }");
 	connect(closeBtn, &QPushButton::clicked, qApp, &QCoreApplication::quit);
 
@@ -250,9 +254,12 @@ void VirtualKeyboard::setupUI() {
 
 QPushButton *VirtualKeyboard::createKey(int keycode, const QString &label, const QString &shiftLabel, float stretch) {
 	QPushButton *btn = new QPushButton(label);
-	btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-	btn->setMinimumHeight(40);
 
+	// Minimum ensures the button won't shrink smaller than setMinimumWidth
+    btn->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    btn->setMinimumHeight(40);
+	btn->setMinimumWidth(40); 
+    
 	m_buttons[keycode] = btn;
 	m_keyMap[btn] = {label, shiftLabel.isEmpty() ? label.toUpper() : shiftLabel};
 
@@ -311,34 +318,79 @@ QPushButton *VirtualKeyboard::createKey(int keycode, const QString &label, const
 }
 
 
+// Replacement for the missing macro
+#define MY_BITS_TO_LONGS(nr) (((nr) + (8 * sizeof(long)) - 1) / (8 * sizeof(long)))
+
 void VirtualKeyboard::syncModifiers() {
-	Qt::KeyboardModifiers mods = QGuiApplication::queryKeyboardModifiers();
-	bool hardwareShift = mods.testFlag(Qt::ShiftModifier);
+    int fd = ::open("/dev/input/hw_kbd", O_RDONLY);
+    if (fd == -1) return;
 
-	// CapsLock state is not part of Qt::KeyboardModifiers.
-	// In a cross-platform way, you can check if the CapsLock key is currently 
-	// toggled using the QKeyEvent logic, but for a simple sync:
-	bool hardwareCaps = QGuiApplication::keyboardModifiers().testFlag(Qt::GroupSwitchModifier); 
-	// Note: On many Linux systems, CapsLock is not easily queried via queryKeyboardModifiers.
-	
-	// Recommended Fix: Only sync Shift automatically, and let CapsLock be handled 
-	// by the toggle state of your virtual button, or use:
-	// bool hardwareCaps = (QGuiApplication::queryKeyboardModifiers() & Qt::KeypadModifier); // Platform dependent
+    // Check CAPS LOCK (LED state)
+    unsigned long led_state[MY_BITS_TO_LONGS(LED_CNT)] = {0};
+    if (ioctl(fd, EVIOCGLED(sizeof(led_state)), led_state) >= 0) {
+        bool capsOn = (led_state[LED_CAPSL / (8 * sizeof(long))] & (1UL << (LED_CAPSL % (8 * sizeof(long)))));
 
-	if (hardwareShift != m_shiftActive || hardwareCaps != m_capsActive) {
-		m_shiftActive = hardwareShift;
-		m_capsActive = hardwareCaps;
-		
-		if (m_buttons.contains(KEY_LEFTSHIFT)) m_buttons[KEY_LEFTSHIFT]->setProperty("active", m_shiftActive);
-		if (m_buttons.contains(KEY_CAPSLOCK)) m_buttons[KEY_CAPSLOCK]->setProperty("active", m_capsActive);
-		
-		for (auto btn : m_buttons) {
-			btn->style()->unpolish(btn); 
-			btn->style()->polish(btn);
-		}
-		updateKeyCaps();
-	}
+        if (m_capsActive != capsOn) {
+            m_capsActive = capsOn;
+			updateKeyCaps();
+        }
+    }
+
+    // Check SHIFT (Key state)
+    // KEY_MAX is usually 0x2ff. We check if either Left or Right shift is depressed.
+    unsigned long key_state[MY_BITS_TO_LONGS(KEY_MAX)] = {0};
+    if (ioctl(fd, EVIOCGKEY(sizeof(key_state)), key_state) >= 0) {
+        bool leftShift = (key_state[KEY_LEFTSHIFT / (8 * sizeof(long))] & (1UL << (KEY_LEFTSHIFT % (8 * sizeof(long)))));
+        bool rightShift = (key_state[KEY_RIGHTSHIFT / (8 * sizeof(long))] & (1UL << (KEY_RIGHTSHIFT % (8 * sizeof(long)))));
+        bool anyShift = leftShift || rightShift;
+
+        if (m_shiftActive != anyShift) {
+            m_shiftActive = anyShift;
+            updateKeyCaps();
+        }
+    }
+    ::close(fd);
 }
+
+// void VirtualKeyboard::syncModifiers() {
+// 	// Qt::KeyboardModifiers mods = QGuiApplication::queryKeyboardModifiers();
+// 	// bool hardwareShift = mods.testFlag(Qt::ShiftModifier);
+
+// 	// CapsLock state is not part of Qt::KeyboardModifiers.
+// 	// In a cross-platform way, you can check if the CapsLock key is currently 
+// 	// toggled using the QKeyEvent logic, but for a simple sync:
+// 	// bool hardwareCaps = QGuiApplication::keyboardModifiers().testFlag(Qt::GroupSwitchModifier); 
+// 	// Note: On many Linux systems, CapsLock is not easily queried via queryKeyboardModifiers.
+	
+// 	// Recommended Fix: Only sync Shift automatically, and let CapsLock be handled 
+// 	// by the toggle state of your virtual button, or use:
+// 	// bool hardwareCaps = (QGuiApplication::queryKeyboardModifiers() & Qt::KeypadModifier); // Platform dependent
+
+// 	auto mods = QGuiApplication::queryKeyboardModifiers();
+//     // int hardwareCaps = mods.testFlag(Qt::GroupSwitchModifier);
+//     int hardwareShift = mods.testFlag(Qt::ShiftModifier);
+// 	// Instead of Qt::CapsLockModifier, try:
+// 	bool hardwareCaps = QGuiApplication::queryKeyboardModifiers().testFlag(Qt::GroupSwitchModifier); 
+// 	// Note: In some Qt versions, Caps Lock is handled via the queryKeyboardModifiers() 
+// 	// return value where you check the specific bit.
+
+// 	qDebug() << "HW Shift:" << hardwareShift;
+// 	qDebug() << "HW Caps:" << hardwareCaps;
+
+// 	// if (hardwareShift != m_shiftActive || hardwareCaps != m_capsActive) {
+// 	// 	m_shiftActive = hardwareShift;
+// 	// 	m_capsActive = hardwareCaps;
+		
+// 	// 	if (m_buttons.contains(KEY_LEFTSHIFT)) m_buttons[KEY_LEFTSHIFT]->setProperty("active", m_shiftActive);
+// 	// 	if (m_buttons.contains(KEY_CAPSLOCK)) m_buttons[KEY_CAPSLOCK]->setProperty("active", m_capsActive);
+		
+// 	// 	for (auto btn : m_buttons) {
+// 	// 		btn->style()->unpolish(btn); 
+// 	// 		btn->style()->polish(btn);
+// 	// 	}
+// 	// 	updateKeyCaps();
+// 	// }
+// }
 
 
 void VirtualKeyboard::updateKeyCaps() {
@@ -347,6 +399,21 @@ void VirtualKeyboard::updateKeyCaps() {
 	for (auto it = m_buttons.begin(); it != m_buttons.end(); ++it) {
 		QPushButton* btn = it.value();
 		int code = it.key();
+
+		bool shouldHighlight = false;
+
+        if (code == KEY_CAPSLOCK) {
+            shouldHighlight = m_capsActive;
+        } else if (code == KEY_LEFTSHIFT || code == KEY_RIGHTSHIFT) {
+            shouldHighlight = m_shiftActive;
+        }
+
+        // Only update if the property actually changed to prevent flicker
+        if (btn->property("active").toBool() != shouldHighlight) {
+            btn->setProperty("active", shouldHighlight);
+            btn->style()->unpolish(btn);
+            btn->style()->polish(btn);
+        }
 
 		// Don't change labels for special functional keys
 		// Skip only specific functional keys
@@ -422,36 +489,71 @@ void VirtualKeyboard::mouseMoveEvent(QMouseEvent *event) {
 
 			if (m_currentEdge == Right) {
 				// Keep resize in real-time as it's usually smoother than moving
-				int nw = qMax(400, width() + delta.x());
-				int nh = qMax(150, height() + delta.y());
+				int nw = qMax(450, width() + delta.x());
+				int nh = qMax(250, height() + delta.y());
 				this->setFixedSize(nw, nh);
-				m_dragPosition = currentGlobalPos; // Update only for resize
+
+				// Updating this when moving will add lag
+				m_dragPosition = currentGlobalPos; // Update for next move increment
+
+			}else if (m_currentEdge == Move) {
+				QPoint currentGlobalPos = event->globalPosition().toPoint();
+                QPoint delta = currentGlobalPos - m_dragPosition;
+                
+                QMargins m = lsw->margins();
+                lsw->setMargins(QMargins(m.left() + delta.x(), m.top() + delta.y(), m.right(), m.bottom()));
+                
+				// Force the compositor to recognize the change
+				// This triggers a buffer commit in the Qt Wayland backend
+				this->update(); 
+
+				// If this->update() doesn't snap it into place immediately, try 
+				// windowHandle()->requestUpdate();
+				
+				// Optional: Re-applying the size often forces a layout sync in KWin/Wlroots
+				// this->resize(this->size());
 			}
-			// Move logic removed from here to prevent fighting with Release event
 		}
 	}
 }
 
 
 void VirtualKeyboard::mouseReleaseEvent(QMouseEvent *event) {
-	if (event->button() == Qt::LeftButton && m_currentEdge == Move) {
-		if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
-			QPoint delta = event->globalPosition().toPoint() - m_dragPosition;
-			QMargins m = lsw->margins();
+    //if (event->button() == Qt::LeftButton && m_currentEdge == Move) {
+        // if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
+        //     QPoint delta = event->globalPosition().toPoint() - m_dragPosition;
+        //     QMargins m = lsw->margins();
 
-			// Calculate new coordinates and prevent "jumping" off-screen
-			int newLeft = qMax(0, m.left() + delta.x());
-			int newTop = qMax(0, m.top() + delta.y());
+        //     int newLeft = qMax(0, m.left() + delta.x());
+        //     int newTop = qMax(0, m.top() + delta.y());
 
-			lsw->setMargins(QMargins(newLeft, newTop, 0, 0));
-		}
-	}
-	m_currentEdge = None;
-	setCursor(Qt::ArrowCursor);
+        //     // 1. Update margins
+        //     lsw->setMargins(QMargins(newLeft, newTop, m.right(), m.bottom()));
+
+        //     // 2. FORCE the compositor to recognize the change
+        //     // This triggers a buffer commit in the Qt Wayland backend
+        //     this->update(); 
+            
+        //     // 3. Optional: Re-applying the size often forces a layout sync in KWin/Wlroots
+        //     this->resize(this->size());
+        // }
+    //}
+
+    m_currentEdge = None;
+    setCursor(Qt::ArrowCursor);
 }
 
 
 void VirtualKeyboard::resizeEvent(QResizeEvent *event) {
 	QWidget::resizeEvent(event);
-	// No manual move() needed here because m_resizeHandle is managed by handleLayout.
+
+	// Simple heuristic: font size is 5% of window height, clamped between 8pt and 16pt
+    // int newFontSize = qBound(8, event->size().height() / 20, 16);
+    
+    // // Apply to all buttons
+    // for (auto btn : m_buttons) {
+    //     QFont f = btn->font();
+    //     f.setPointSize(newFontSize);
+    //     btn->setFont(f);
+    // }
 }

@@ -15,8 +15,11 @@
 
     "cSpell.words": [
 		"Bksp",
+		"CAPSL",
 		"CAPSLOCK",
 		"EVBIT",
+		"EVIOCGKEY",
+		"EVIOCGLED",
 		"keysym",
 		"LEFTCTRL",
 		"libx",
@@ -25,6 +28,7 @@
 		"pacman",
 		"qputenv",
 		"RIGHTCTRL",
+		"udevadm",
 		"unpolish",
 		"VIRTUALKEYBOARD",
 		"ZXCV"
