@@ -3,20 +3,6 @@
         "**/.git": false
     },
 
-	"editor.matchBrackets": "always",
-    "editor.guides.bracketPairs": false,
-    "editor.guides.bracketPairsHorizontal": false,
-    "[cpp]": {
-        "editor.bracketPairColorization.enabled": true
-    },
-
-	"workbench.colorCustomizations": {
-		"editorBracketMatch.background": "#00ff15", // Solid Red Background
-		"editorBracketMatch.border": "#ffffff",     // White Border
-		// "editorBracketHighlight.foreground1": "#ffd700", // Force colorization color 1
-		"editorBracketHighlight.unexpectedBracket.foreground": "#ff0000"
-	},
-
     "files.associations": {
         "CMakeLists.txt": "cmake"
     },
@@ -28,15 +14,19 @@
     ],
 
     "cSpell.words": [
-        "Bksp",
-        "CAPSLOCK",
-        "EVBIT",
-        "keysym",
-        "LEFTCTRL",
-        "libx",
-        "libxkbcommon",
-        "libxtst",
-        "pacman",
-        "ZXCV"
-    ]
+		"Bksp",
+		"CAPSLOCK",
+		"EVBIT",
+		"keysym",
+		"LEFTCTRL",
+		"libx",
+		"libxkbcommon",
+		"libxtst",
+		"pacman",
+		"qputenv",
+		"RIGHTCTRL",
+		"unpolish",
+		"VIRTUALKEYBOARD",
+		"ZXCV"
+	]
 }

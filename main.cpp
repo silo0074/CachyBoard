@@ -7,6 +7,8 @@
 // sudo pacman -S wlr-protocols
 // sudo pacman -S plasma-wayland-protocols
 // sudo pacman -S --needed base-devel cmake qt6-base qt6-wayland wayland-protocols libx11 libxtst pkgconf
+// sudo pacman -S qt6-multimedia # for click sound
+// https://github.com/onboard-osk/onboard/tree/main/sounds
 
 // Note: The zwp_input_method_v1_keysym expects a keysym rather than a raw Linux keycode. 
 // If your compositor requires true keysyms, you may need to use a mapping table or libxkbcommon 
@@ -14,11 +16,11 @@
 
 
 int main(int argc, char *argv[]) {
-  QApplication a(argc, argv);
+	QApplication a(argc, argv);
 
-  // Ensure we use the integrated Wayland support if available
-  VirtualKeyboard w;
-  w.show();
+	// Ensure we use the integrated Wayland support if available
+	VirtualKeyboard w;
+	w.show();
 
-  return a.exec();
+	return a.exec();
 }

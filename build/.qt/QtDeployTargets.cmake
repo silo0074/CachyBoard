@@ -1,2 +1,0 @@
-set(__QT_DEPLOY_TARGET_QtVirtualKeyboard_FILE /home/devuser/projects/Keyboard_Virtual_Wayland/build/QtVirtualKeyboard)
-set(__QT_DEPLOY_TARGET_QtVirtualKeyboard_TYPE EXECUTABLE)

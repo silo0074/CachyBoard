@@ -1,5 +1,0 @@
-/home/devuser/projects/Keyboard_Virtual_Wayland/build/CMakeFiles/QtVirtualKeyboard.dir
-/home/devuser/projects/Keyboard_Virtual_Wayland/build/CMakeFiles/edit_cache.dir
-/home/devuser/projects/Keyboard_Virtual_Wayland/build/CMakeFiles/rebuild_cache.dir
-/home/devuser/projects/Keyboard_Virtual_Wayland/build/CMakeFiles/QtVirtualKeyboard_autogen_timestamp_deps.dir
-/home/devuser/projects/Keyboard_Virtual_Wayland/build/CMakeFiles/QtVirtualKeyboard_autogen.dir

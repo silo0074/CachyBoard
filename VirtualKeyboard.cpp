@@ -4,407 +4,454 @@
 #include <QGuiApplication>
 #include <QStyle>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QLabel>
+#include <QCursor>
+#include <QCoreApplication>
+#include <QDir>
 #include <linux/input-event-codes.h>
 #include <unistd.h>
 #include <linux/input.h>
-
-extern "C" {
-    #include "wayland-virtual-keyboard-unstable-v1-client-protocol.h"
-    #include "wayland-input-method-unstable-v1-client-protocol.h"
-}
+#include <sys/ioctl.h>
+#include <vector>
+#include <tuple>
 
 VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
-  connect(this, &QWidget::destroyed, qApp, &QCoreApplication::quit);
+	connect(this, &QWidget::destroyed, qApp, &QCoreApplication::quit);
 
-  // Basic setup
-  setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
-  setAttribute(Qt::WA_TranslucentBackground);
-  
-  // Check platform
-  isWayland = QGuiApplication::platformName().contains("wayland");
+	// Basic setup
+	setWindowFlags(Qt::Window | Qt::Tool);
+	// setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
+	setAttribute(Qt::WA_TranslucentBackground);
 
-  if (isWayland) {
-    
-    qDebug() << "Wayland detected.";
+	setMouseTracking(true);
+	initUinput();
 
-    m_uinputFd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-    if (m_uinputFd >= 0) {
-        ioctl(m_uinputFd, UI_SET_EVBIT, EV_KEY);
-        // Enable all keys (you can loop 1-255)
-        for(int i = 1; i < 255; i++) ioctl(m_uinputFd, UI_SET_KEYBIT, i);
+	m_clickSound = new QSoundEffect(this);
+	// Make sure to place a click.wav in your build directory or use a resource path
+	QString soundPath = QCoreApplication::applicationDirPath() + "/click.wav";
 
-        struct uinput_setup usetup;
-        memset(&usetup, 0, sizeof(usetup));
-        usetup.id.bustype = BUS_USB;
-        usetup.id.vendor  = 0x1234; 
-        usetup.id.product = 0x5678;
-        strcpy(usetup.name, "Custom Virtual Keyboard");
+	// Check if it exists for debugging
+	if (!QFile::exists(soundPath)) {
+		qWarning() << "Sound file NOT found at:" << soundPath;
+	}
 
-        ioctl(m_uinputFd, UI_DEV_SETUP, &usetup);
-        ioctl(m_uinputFd, UI_DEV_CREATE);
-        qDebug() << "uinput device created successfully!";
-    } else {
-        qDebug() << "Failed to open /dev/uinput:" << strerror(errno);
-    }
+	m_clickSound->setSource(QUrl::fromLocalFile(soundPath));
+	m_clickSound->setVolume(0.5f);
 
-    m_display = wl_display_connect(NULL);
+	setupUI();
+	// resize(800, 300);
 
-    if (m_display) {
-      qDebug() << "m_display is true";
-      wl_registry *registry = wl_display_get_registry(m_display);
-
-      static const wl_registry_listener registry_listener = {
-          [](void *data, wl_registry *reg, uint32_t id, const char *interface, uint32_t version) {
-              auto self = static_cast<VirtualKeyboard *>(data);
-            //   qDebug() << "Available Interface:" << interface << "Version:" << version;
-
-              if (strcmp(interface, "zwp_input_panel_v1") == 0) {
-                  self->m_imManager = (zwp_input_panel_v1*)wl_registry_bind(reg, id, &zwp_input_panel_v1_interface, 1);
-              } else if (strcmp(interface, "zwp_input_method_v1") == 0) {
-                  self->m_inputMethod = (zwp_input_method_v1*)wl_registry_bind(reg, id, &zwp_input_method_v1_interface, 1);
-                  
-                  // Set up a listener to get the "context" when a text field is activated
-                  static const zwp_input_method_v1_listener im_listener = {
-                      [](void *data, zwp_input_method_v1 *, zwp_input_method_context_v1 *id) {
-                          auto s = static_cast<VirtualKeyboard*>(data);
-                          s->m_inputContext = id; // Store the context needed to send keys
-                      },
-                      [](void *data, zwp_input_method_v1 *, zwp_input_method_context_v1 *context) {
-                          auto s = static_cast<VirtualKeyboard*>(data);
-                          if (s->m_inputContext == context) s->m_inputContext = nullptr;
-                      }
-                  };
-                  zwp_input_method_v1_add_listener(self->m_inputMethod, &im_listener, self);
-              }
-          },
-          [](void *, wl_registry *, uint32_t) {}
-      };
-
-      wl_registry_add_listener(registry, &registry_listener, this); //
-      wl_display_roundtrip(m_display);
-      wl_display_roundtrip(m_display); // First: find interfaces
-      wl_display_roundtrip(m_display); // Second: complete binding
-
-      if (m_manager && m_seat) {
-          qDebug() << "Success: Manager and Seat found.";
-          m_virtualKeyboard = zwp_virtual_keyboard_manager_v1_create_virtual_keyboard(m_manager, m_seat);
-          wl_display_roundtrip(m_display); // Sync the creation
-      } else if (m_imManager && m_seat) {
-          qDebug() << "Falling back to Input Method Manager.";
-          // m_inputMethod = zwp_input_method_manager_v1_get_input_method(m_imManager, m_seat);
-          wl_display_roundtrip(m_display);
-      } else {
-          if (!m_manager) qDebug() << "Error: zwp_virtual_keyboard_manager_v1 NOT found in registry!";
-          if (!m_seat)    qDebug() << "Error: wl_seat NOT found in registry!";
-      }
-
-      if (m_virtualKeyboard) {
-          qDebug() << "m_virtualKeyboard";
-          // You must send a keymap, even if it's empty/null, 
-          // to "activate" the virtual keyboard in many compositors.
-          // This uses format 1 (libxkbcommon) and an empty file descriptor.
-          zwp_virtual_keyboard_v1_keymap(m_virtualKeyboard, 1, -1, 0);
-      }
-    }
-  } else {
-    m_xDisplay = XOpenDisplay(NULL); //
-  }
-
-    initUinput();
-    setupUI();
-    resize(800, 300);
-
-    setStyleSheet(
-        "QWidget { background-color: rgba(35, 35, 35, 240); border-radius: 8px; }"
-        "QPushButton { background-color: #444; color: white; border: 1px solid #555; "
-        "border-radius: 4px; padding: 5px; font-size: 13px; font-weight: bold; min-width: 30px; }"
-        "QPushButton:pressed { background-color: #0078d7; }"
-        "QPushButton[active='true'] { background-color: #005a9e; border: 1px solid #00a2ff; }");
+	setStyleSheet(
+		"QWidget { background-color: rgba(35, 35, 35, 240); border-radius: 0px; }"
+		"QPushButton { background-color: #444; color: white; border: 1px solid #555; "
+		"border-radius: 4px; padding: 5px; font-size: 14pt; font-weight: bold; min-width: 30px; }"
+		"QPushButton:pressed { background-color: #0078d7; }"
+		"QPushButton[active='true'] { background-color: #005a9e; border: 1px solid #00a2ff; }");
 }
 
+
 VirtualKeyboard::~VirtualKeyboard() {
-    qDebug() << "Running destructor";
-    if (m_uinputFd >= 0) {
-        // Force release all keys before destroying the device
-        releaseAllKeys(); 
+	if (m_uinputFd == -1) return; // Already cleaned up
+	qDebug() << "Running destructor";
+	qDebug() << "m_uinputFd is" << m_uinputFd;
 
-        ioctl(m_uinputFd, UI_DEV_DESTROY, 0);
-        
-        // Use :: to specify the global Linux close() function
-        ::close(m_uinputFd); 
-        
-        m_uinputFd = -1;
-        qDebug() << "uinput device cleaned up successfully.";
-    }
+	if (m_uinputFd >= 0) {
+		// Force release all keys before destroying the device
+		releaseAllKeys();
+		// Add usleep(50000); (50ms) before you close the file descriptor 
+		// to ensure the "all release" signals are flushed.
+		usleep(50000);
 
-    if (m_virtualKeyboard) zwp_virtual_keyboard_v1_destroy(m_virtualKeyboard);
-    if (m_inputMethod) zwp_input_method_v1_destroy(m_inputMethod);
-    if (m_display) wl_display_disconnect(m_display);
-    if (m_xDisplay) XCloseDisplay(m_xDisplay);
+		ioctl(m_uinputFd, UI_DEV_DESTROY, 0);
+		
+		// Use :: to specify the global Linux close() function
+		::close(m_uinputFd); 
+		
+		m_uinputFd = -1;
+		qDebug() << "uinput device cleaned up successfully.";
+	}
 }
 
 
 void VirtualKeyboard::releaseAllKeys() {
-    if (m_uinputFd < 0) return;
-    
-    // Scan through standard keycodes and force release
-    for (int i = 1; i < 248; i++) {
-        struct input_event ev;
-        memset(&ev, 0, sizeof(ev));
-        ev.type = EV_KEY;
-        ev.code = i;
-        ev.value = 0; // Release
-        write(m_uinputFd, &ev, sizeof(ev));
-    }
-    
-    // Sync the report
-    struct input_event syn;
-    memset(&syn, 0, sizeof(syn));
-    syn.type = EV_SYN;
-    syn.code = SYN_REPORT;
-    syn.value = 0;
-    write(m_uinputFd, &syn, sizeof(syn));
+	qDebug() << "releaseAllKeys()";
+	qDebug() << "m_uinputFd is" << m_uinputFd;
+
+	if (m_uinputFd < 0) return;
+	
+	// Scan through standard keycodes and force release
+	// KEY_MAX is defined in linux/input.h
+	for (int i = 0; i <= KEY_MAX; i++) {
+		struct input_event ev;
+		memset(&ev, 0, sizeof(ev));
+		ev.type = EV_KEY;
+		ev.code = i;
+		ev.value = 0; // Release
+		write(m_uinputFd, &ev, sizeof(ev));
+	}
+	
+	// Sync the report
+	struct input_event syn;
+	memset(&syn, 0, sizeof(syn));
+	syn.type = EV_SYN;
+	syn.code = SYN_REPORT;
+	syn.value = 0;
+	write(m_uinputFd, &syn, sizeof(syn));
 }
 
 
 void VirtualKeyboard::initUinput() {
-    m_uinputFd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-    if (m_uinputFd < 0) {
-        qDebug() << "CRITICAL: Could not open /dev/uinput:" << strerror(errno);
-        return;
-    }
+	m_uinputFd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+	if (m_uinputFd < 0) {
+		qCritical() << "CRITICAL: Could not open /dev/uinput:" << strerror(errno);
+		return;
+	}
 
-    // 1. Enable Key Events
-    ioctl(m_uinputFd, UI_SET_EVBIT, EV_KEY);
-    
-    // 2. Enable ALL keys (0 to 255 covers all standard Linux keycodes)
-    for (int i = 0; i < 255; i++) {
-        ioctl(m_uinputFd, UI_SET_KEYBIT, i);
-    }
+	// Enable Key Events
+	ioctl(m_uinputFd, UI_SET_EVBIT, EV_KEY);
+	
+	// Enable ALL keys (0 to KEY_MAX covers all standard Linux keycodes)
+	for (int i = 0; i < KEY_MAX; i++) {
+		ioctl(m_uinputFd, UI_SET_KEYBIT, i);
+	}
 
-    // 3. Setup Device Info
-    struct uinput_setup usetup;
-    memset(&usetup, 0, sizeof(usetup));
-    usetup.id.bustype = BUS_USB;
-    usetup.id.vendor  = 0x1234; // Dummy IDs
-    usetup.id.product = 0x5678;
-    strcpy(usetup.name, "Qt Virtual Keyboard Device");
+	// Setup Device Info
+	struct uinput_setup usetup;
+	memset(&usetup, 0, sizeof(usetup));
+	usetup.id.bustype = BUS_USB;
+	usetup.id.vendor  = 0x1234; // Dummy IDs
+	usetup.id.product = 0x5678;
+	strcpy(usetup.name, "Qt Virtual Keyboard Device");
 
-    ioctl(m_uinputFd, UI_DEV_SETUP, &usetup);
-    ioctl(m_uinputFd, UI_DEV_CREATE);
-    
-    qDebug() << "Uinput device 'Qt Virtual Keyboard Device' created!";
+	ioctl(m_uinputFd, UI_DEV_SETUP, &usetup);
+	ioctl(m_uinputFd, UI_DEV_CREATE);
+	
+	qDebug() << "Uinput device 'Qt Virtual Keyboard Device' created!";
 }
 
 
 void VirtualKeyboard::showEvent(QShowEvent *event) {
-    QWidget::showEvent(event);
-    
-    if (windowHandle()) {
-        if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
-            lsw->setLayer(LayerShellQt::Window::LayerOverlay);
-            
-            // CRITICAL: InteractivityNone allows clicks to pass THROUGH the 
-            // empty areas of the keyboard to the app behind it.
-            lsw->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
-            
-            // Anchor to Bottom/Left/Right only. 
-            // Do NOT anchor to Top, or it will stretch to full screen.
-            lsw->setAnchors(LayerShellQt::Window::Anchors(
-              LayerShellQt::Window::AnchorBottom | 
-              LayerShellQt::Window::AnchorLeft | 
-              LayerShellQt::Window::AnchorRight
-          ));
-            
-            // Set an exclusive zone of 0 so it doesn't push other windows up,
-            // or a positive value equal to height if you want it to push apps up.
-            lsw->setExclusiveZone(0); 
-            
-            // Force the height so it doesn't fill the screen
-            resize(QGuiApplication::primaryScreen()->size().width() * 0.8, 300);
-        }
-    }
-    updateKeyCaps();
+	QWidget::showEvent(event);
+	
+	if (windowHandle()) {
+		if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
+			lsw->setLayer(LayerShellQt::Window::LayerOverlay);
+
+			// CRITICAL: InteractivityNone allows clicks to pass THROUGH the 
+			// empty areas of the keyboard to the app behind it.
+			lsw->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
+
+			// Set an exclusive zone of 0 so it doesn't push other windows up,
+			// or a positive value equal to height if you want it to push apps up.
+			// Remove AnchorLeft/Right so width isn't forced to screen size
+			// Anchor to Bottom AND Left for 2D movement
+			// Explicitly use the Anchors constructor
+			// LayerShellQt::Window::Anchors anchors(LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorLeft);
+			// lsw->setAnchors(anchors);
+			lsw->setExclusiveZone(0);
+			
+			// Force the height so it doesn't fill the screen
+			resize(QGuiApplication::primaryScreen()->size().width() * 0.8, 300);
+
+			// Position it at the bottom of the screen initially using margins
+			int screenHeight = QGuiApplication::primaryScreen()->size().height();
+			int screenWidth = QGuiApplication::primaryScreen()->size().width();
+			int keyboardWidth = screenWidth * 0.8; 
+			int leftMargin = (screenWidth - keyboardWidth) / 2; // Center math
+			lsw->setMargins(QMargins(leftMargin, screenHeight - 350, leftMargin, 0));
+		}
+	}
+	updateKeyCaps();
 }
 
 
 void VirtualKeyboard::setupUI() {
-    // Master Vertical Layout
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(0);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
+	// Master Vertical Layout
+	QVBoxLayout *mainLayout = new QVBoxLayout(this);
+	mainLayout->setSpacing(0);
+	mainLayout->setContentsMargins(0, 0, 0, 0);
 
-    // Drag Handle (The Top Bar)
-    QWidget *handle = new QWidget(this);
-    handle->setFixedHeight(25);
-    handle->setStyleSheet("background-color: #333; border-top-left-radius: 8px; border-top-right-radius: 8px;");
-    
-    QHBoxLayout *handleLayout = new QHBoxLayout(handle);
-    handleLayout->setContentsMargins(10, 0, 10, 0);
-    
-    QLabel *title = new QLabel("Keyboard Handle", handle);
-    title->setStyleSheet("color: #aaa; font-size: 11px; font-weight: bold;");
-    
-    QPushButton *closeBtn = new QPushButton("✕", handle);
-    // closeBtn->setFixedSize(24, 24);
-    closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 16px; }"
-                            "QPushButton:hover { color: #f44; }");
-    connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
+	// Drag Handle (The Top Bar)
+	QWidget *handle = new QWidget(this);
+	handle->setFixedHeight(25);
+	// Removed rounded corners to make it look like a handle, not a window
+	handle->setStyleSheet("background-color: #333; border-radius: 0px;");
+	
+	QHBoxLayout *handleLayout = new QHBoxLayout(handle);
+	handleLayout->setContentsMargins(10, 0, 10, 0);
+	
+	QLabel *title = new QLabel("Keyboard Handle", handle);
+	title->setStyleSheet("color: #aaa; font-size: 11px; font-weight: bold;");
+	
+	QPushButton *closeBtn = new QPushButton("✕", handle);
+	// closeBtn->setFixedSize(24, 24);
+	closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 16px; }"
+							"QPushButton:hover { color: #f44; }");
+	connect(closeBtn, &QPushButton::clicked, qApp, &QCoreApplication::quit);
 
-    handleLayout->addWidget(title);
-    handleLayout->addStretch();
-    handleLayout->addWidget(closeBtn);
-    mainLayout->addWidget(handle);
+	m_resizeHandle = new QPushButton("◢", this);
+	m_resizeHandle->setFixedSize(20, 20);
+	m_resizeHandle->setCursor(Qt::SizeFDiagCursor);
+	// Let mouse events pass through the button to the VirtualKeyboard 
+	// so our custom drag/resize logic in mousePressEvent works correctly.
+	m_resizeHandle->setAttribute(Qt::WA_TransparentForMouseEvents);
+	m_resizeHandle->setStyleSheet("background: transparent; color: #666; border: none;");
 
-    // Grid for Keys (Tight spacing)
-    QWidget *keysWidget = new QWidget(this);
-    QVBoxLayout *keysLayout = new QVBoxLayout(keysWidget);
-    keysLayout->setSpacing(4);
-    keysLayout->setContentsMargins(6, 6, 6, 6);
+	handleLayout->addWidget(title);
+	handleLayout->addStretch();
+	handleLayout->addWidget(closeBtn);
+	handleLayout->addWidget(m_resizeHandle);
+	mainLayout->addWidget(handle);
 
-    auto addRow = [&](const std::vector<std::tuple<int, QString, QString, float>>& keys) {
-        QHBoxLayout *row = new QHBoxLayout();
-        row->setSpacing(4);
-        for (const auto& k : keys) {
-            row->addWidget(createKey(std::get<0>(k), std::get<1>(k), std::get<2>(k), std::get<3>(k)), std::get<3>(k) * 10);
-        }
-        keysLayout->addLayout(row);
-    };
+	// Grid for Keys (Tight spacing)
+	QWidget *keysWidget = new QWidget(this);
+	QVBoxLayout *keysLayout = new QVBoxLayout(keysWidget);
+	// keysLayout->setSpacing(4);
+	// keysLayout->setContentsMargins(6, 6, 6, 6);
 
-    // Row 1: Numbers
-    addRow({{KEY_GRAVE, "`", "~", 1.0}, {KEY_1, "1", "!", 1.0}, {KEY_2, "2", "@", 1.0}, {KEY_3, "3", "#", 1.0}, {KEY_4, "4", "$", 1.0},
-            {KEY_5, "5", "%", 1.0}, {KEY_6, "6", "^", 1.0}, {KEY_7, "7", "&", 1.0}, {KEY_8, "8", "*", 1.0}, {KEY_9, "9", "(", 1.0},
-            {KEY_0, "0", ")", 1.0}, {KEY_MINUS, "-", "_", 1.0}, {KEY_EQUAL, "=", "+", 1.0}, {KEY_BACKSPACE, "Backspace", "", 2.0}});
+	auto addRow = [&](const std::vector<std::tuple<int, QString, QString, float>>& keys) {
+		QHBoxLayout *row = new QHBoxLayout();
+		// row->setSpacing(4);
+		for (const auto& k : keys) {
+			row->addWidget(createKey(std::get<0>(k), std::get<1>(k), std::get<2>(k), std::get<3>(k)), std::get<3>(k) * 10);
+		}
+		keysLayout->addLayout(row);
+	};
 
-    // Row 2: QWERTY
-    addRow({{KEY_TAB, "Tab", "", 1.5}, {KEY_Q, "q", "Q", 1.0}, {KEY_W, "w", "W", 1.0}, {KEY_E, "e", "E", 1.0}, {KEY_R, "r", "R", 1.0},
-            {KEY_T, "t", "T", 1.0}, {KEY_Y, "y", "Y", 1.0}, {KEY_U, "u", "U", 1.0}, {KEY_I, "i", "I", 1.0}, {KEY_O, "o", "O", 1.0},
-            {KEY_P, "p", "P", 1.0}, {KEY_LEFTBRACE, "[", "{", 1.0}, {KEY_RIGHTBRACE, "]", "}", 1.0}, {KEY_BACKSLASH, "\\", "|", 1.5}});
+	// Row 1: Numbers
+	addRow({{KEY_GRAVE, "`", "~", 1.0}, {KEY_1, "1", "!", 1.0}, {KEY_2, "2", "@", 1.0}, {KEY_3, "3", "#", 1.0}, {KEY_4, "4", "$", 1.0},
+			{KEY_5, "5", "%", 1.0}, {KEY_6, "6", "^", 1.0}, {KEY_7, "7", "&", 1.0}, {KEY_8, "8", "*", 1.0}, {KEY_9, "9", "(", 1.0},
+			{KEY_0, "0", ")", 1.0}, {KEY_MINUS, "-", "_", 1.0}, {KEY_EQUAL, "=", "+", 1.0}, {KEY_BACKSPACE, "Backspace", "", 2.0}});
 
-    // Row 3: ASDF
-    addRow({{KEY_CAPSLOCK, "CapsLock", "", 1.8}, {KEY_A, "a", "A", 1.0}, {KEY_S, "s", "S", 1.0}, {KEY_D, "d", "D", 1.0}, {KEY_F, "f", "F", 1.0},
-            {KEY_G, "g", "G", 1.0}, {KEY_H, "h", "H", 1.0}, {KEY_J, "j", "J", 1.0}, {KEY_K, "k", "K", 1.0}, {KEY_L, "l", "L", 1.0},
-            {KEY_SEMICOLON, ";", ":", 1.0}, {KEY_APOSTROPHE, "'", "\"", 1.0}, {KEY_ENTER, "Enter", "", 2.2}});
+	// Row 2: QWERTY
+	addRow({{KEY_TAB, "Tab", "", 1.5}, {KEY_Q, "q", "Q", 1.0}, {KEY_W, "w", "W", 1.0}, {KEY_E, "e", "E", 1.0}, {KEY_R, "r", "R", 1.0},
+			{KEY_T, "t", "T", 1.0}, {KEY_Y, "y", "Y", 1.0}, {KEY_U, "u", "U", 1.0}, {KEY_I, "i", "I", 1.0}, {KEY_O, "o", "O", 1.0},
+			{KEY_P, "p", "P", 1.0}, {KEY_LEFTBRACE, "[", "{", 1.0}, {KEY_RIGHTBRACE, "]", "}", 1.0}, {KEY_BACKSLASH, "\\", "|", 1.5}});
 
-    // Row 4: ZXCV
-    addRow({{KEY_LEFTSHIFT, "Shift", "", 2.3}, {KEY_Z, "z", "Z", 1.0}, {KEY_X, "x", "X", 1.0}, {KEY_C, "c", "C", 1.0}, {KEY_V, "v", "V", 1.0},
-            {KEY_B, "b", "B", 1.0}, {KEY_N, "n", "N", 1.0}, {KEY_M, "m", "M", 1.0}, {KEY_COMMA, ",", "<", 1.0}, {KEY_DOT, ".", ">", 1.0},
-            {KEY_SLASH, "/", "?", 1.0}, {KEY_RIGHTSHIFT, "Shift", "", 1.7}, {KEY_UP, "↑", "", 1.0}});
+	// Row 3: ASDF
+	addRow({{KEY_CAPSLOCK, "CapsLock", "", 2}, {KEY_A, "a", "A", 1.0}, {KEY_S, "s", "S", 1.0}, {KEY_D, "d", "D", 1.0}, {KEY_F, "f", "F", 1.0},
+			{KEY_G, "g", "G", 1.0}, {KEY_H, "h", "H", 1.0}, {KEY_J, "j", "J", 1.0}, {KEY_K, "k", "K", 1.0}, {KEY_L, "l", "L", 1.0},
+			{KEY_SEMICOLON, ";", ":", 1.0}, {KEY_APOSTROPHE, "'", "\"", 1.0}, {KEY_ENTER, "Enter", "", 2}});
 
-    // Row 5: Bottom
-    addRow({{KEY_LEFTCTRL, "Ctrl", "", 1.2}, {KEY_LEFTMETA, "Super", "", 1.2}, {KEY_LEFTALT, "Alt", "", 1.2}, {KEY_SPACE, "Space", "", 6.0},
-            {KEY_RIGHTALT, "Alt", "", 1.2}, {KEY_RIGHTMETA, "Super", "", 1.2}, {KEY_RIGHTCTRL, "Ctrl", "", 1.2},
-            {KEY_LEFT, "←", "", 1.0}, {KEY_DOWN, "↓", "", 1.0}, {KEY_RIGHT, "→", "", 1.0}});
+	// Row 4: ZXCV
+	addRow({{KEY_LEFTSHIFT, "Shift", "", 2.5}, {KEY_Z, "z", "Z", 1.0}, {KEY_X, "x", "X", 1.0}, {KEY_C, "c", "C", 1.0}, {KEY_V, "v", "V", 1.0},
+			{KEY_B, "b", "B", 1.0}, {KEY_N, "n", "N", 1.0}, {KEY_M, "m", "M", 1.0}, {KEY_COMMA, ",", "<", 1.0}, {KEY_DOT, ".", ">", 1.0},
+			{KEY_SLASH, "/", "?", 1.0}, {KEY_RIGHTSHIFT, "Shift", "", 1.5}, {KEY_UP, "↑", "", 1.0}});
 
-    mainLayout->addWidget(keysWidget);
+	// Row 5: Bottom
+	addRow({{KEY_LEFTCTRL, "Ctrl", "", 1.0}, {KEY_LEFTMETA, "Super", "", 1.0}, {KEY_LEFTALT, "Alt", "", 1.0}, {KEY_SPACE, "Space", "", 6.3},
+			{KEY_RIGHTALT, "Alt", "", 1.0}, {KEY_RIGHTMETA, "Super", "", 1.0}, {KEY_RIGHTCTRL, "Ctrl", "", 1.0},
+			{KEY_LEFT, "←", "", 1.0}, {KEY_DOWN, "↓", "", 1.0}, {KEY_RIGHT, "→", "", 1.0}});
+
+	mainLayout->addWidget(keysWidget);
 }
+
 
 QPushButton *VirtualKeyboard::createKey(int keycode, const QString &label, const QString &shiftLabel, float stretch) {
-    QPushButton *btn = new QPushButton(label);
-    btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    btn->setMinimumHeight(40);
+	QPushButton *btn = new QPushButton(label);
+	btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	btn->setMinimumHeight(40);
 
-    m_buttons[keycode] = btn;
-    m_keyMap[btn] = {label, shiftLabel.isEmpty() ? label.toUpper() : shiftLabel};
+	m_buttons[keycode] = btn;
+	m_keyMap[btn] = {label, shiftLabel.isEmpty() ? label.toUpper() : shiftLabel};
 
-    connect(btn, &QPushButton::pressed, [this, keycode, btn]() {
-        if (keycode == KEY_LEFTSHIFT || keycode == KEY_RIGHTSHIFT) {
-            m_shiftActive = !m_shiftActive;
-            btn->setProperty("active", m_shiftActive);
-            btn->style()->unpolish(btn); btn->style()->polish(btn);
-            updateKeyCaps();
-            sendKey(keycode, m_shiftActive);
-        } else if (keycode == KEY_CAPSLOCK) {
-            m_capsActive = !m_capsActive;
-            btn->setProperty("active", m_capsActive);
-            btn->style()->unpolish(btn); btn->style()->polish(btn);
-            updateKeyCaps();
-            sendKey(keycode, m_capsActive);
-        } else {
-            sendKey(keycode, true);
-        }
-    });
+	connect(btn, &QPushButton::pressed, [this, keycode, btn]() {
+		if (m_clickSound->isLoaded()) m_clickSound->play();
+		// syncModifiers();
 
-    connect(btn, &QPushButton::released, [this, keycode]() {
-        if (keycode != KEY_LEFTSHIFT && keycode != KEY_RIGHTSHIFT && keycode != KEY_CAPSLOCK)
-            sendKey(keycode, false);
-    });
+		if (keycode == KEY_LEFTSHIFT || keycode == KEY_RIGHTSHIFT) {
+			// Shift (The Modifier): Shift is not a switch; it is a modifier. 
+			// It is only active while the key is physically held down. 
+			// If you send Press + Release instantly, the Shift state is gone 
+			// before you even click the next letter. To make it work, you must send 
+			// "Press" (true) and not send "Release" until the user clicks Shift again to turn it off.
+			m_shiftActive = !m_shiftActive;
 
-    return btn;
+			// Hold the key down in the OS if active, release if inactive
+			sendKey(keycode, m_shiftActive); 
+			
+			btn->setProperty("active", m_shiftActive);
+			btn->style()->unpolish(btn);
+			btn->style()->polish(btn);
+			updateKeyCaps();
+                        
+		} else if (keycode == KEY_CAPSLOCK) {
+			// Caps Lock (The Toggle): The kernel treats Caps Lock as a "switch." 
+			// When it receives a Press + Release sequence, it toggles the "Caps" state on. 
+			// It stays on until it receives another Press + Release. 
+			// If you only send "Press" (true) without "Release" (false), the OS thinks a physical 
+			// finger is permanently holding the button down, which is why your hardware keyboard gets "stuck".
+
+			// 1. Toggle our internal UI state
+			m_capsActive = !m_capsActive;
+
+			// 2. ALWAYS send a full Press + Release to the OS to trigger the toggle
+			sendKey(keycode, true);
+			sendKey(keycode, false);
+
+			// 3. Update the button's visual "active" blue highlight
+			btn->setProperty("active", m_capsActive);
+			btn->style()->unpolish(btn); 
+			btn->style()->polish(btn);
+			updateKeyCaps();
+                        
+		} else {
+			// Regular keys release on the released() signal below
+			sendKey(keycode, true);
+		}
+	});
+
+	connect(btn, &QPushButton::released, [this, keycode]() {
+		if (keycode != KEY_LEFTSHIFT && keycode != KEY_RIGHTSHIFT && keycode != KEY_CAPSLOCK)
+			sendKey(keycode, false);
+	});
+
+	return btn;
 }
+
+
+void VirtualKeyboard::syncModifiers() {
+	Qt::KeyboardModifiers mods = QGuiApplication::queryKeyboardModifiers();
+	bool hardwareShift = mods.testFlag(Qt::ShiftModifier);
+
+	// CapsLock state is not part of Qt::KeyboardModifiers.
+	// In a cross-platform way, you can check if the CapsLock key is currently 
+	// toggled using the QKeyEvent logic, but for a simple sync:
+	bool hardwareCaps = QGuiApplication::keyboardModifiers().testFlag(Qt::GroupSwitchModifier); 
+	// Note: On many Linux systems, CapsLock is not easily queried via queryKeyboardModifiers.
+	
+	// Recommended Fix: Only sync Shift automatically, and let CapsLock be handled 
+	// by the toggle state of your virtual button, or use:
+	// bool hardwareCaps = (QGuiApplication::queryKeyboardModifiers() & Qt::KeypadModifier); // Platform dependent
+
+	if (hardwareShift != m_shiftActive || hardwareCaps != m_capsActive) {
+		m_shiftActive = hardwareShift;
+		m_capsActive = hardwareCaps;
+		
+		if (m_buttons.contains(KEY_LEFTSHIFT)) m_buttons[KEY_LEFTSHIFT]->setProperty("active", m_shiftActive);
+		if (m_buttons.contains(KEY_CAPSLOCK)) m_buttons[KEY_CAPSLOCK]->setProperty("active", m_capsActive);
+		
+		for (auto btn : m_buttons) {
+			btn->style()->unpolish(btn); 
+			btn->style()->polish(btn);
+		}
+		updateKeyCaps();
+	}
+}
+
 
 void VirtualKeyboard::updateKeyCaps() {
-    bool uppercase = m_shiftActive ^ m_capsActive;
-    for (auto it = m_buttons.begin(); it != m_buttons.end(); ++it) {
-        QPushButton* btn = it.value();
-        int code = it.key();
-        
-        // Don't change labels for special functional keys
-        if (code == KEY_BACKSPACE || code == KEY_TAB || code == KEY_ENTER || 
-            code == KEY_LEFTSHIFT || code == KEY_RIGHTSHIFT || code == KEY_CAPSLOCK ||
-            code >= KEY_LEFTCTRL) continue;
+  	bool uppercase = m_shiftActive ^ m_capsActive;
 
-        if (m_shiftActive && !m_keyMap[btn].shift.isEmpty()) {
-            btn->setText(m_keyMap[btn].shift);
-        } else if (uppercase) {
-            btn->setText(m_keyMap[btn].normal.toUpper());
-        } else {
-            btn->setText(m_keyMap[btn].normal);
-        }
-    }
+	for (auto it = m_buttons.begin(); it != m_buttons.end(); ++it) {
+		QPushButton* btn = it.value();
+		int code = it.key();
+
+		// Don't change labels for special functional keys
+		// Skip only specific functional keys
+		if (code < 1 || code == KEY_BACKSPACE || code == KEY_TAB || code == KEY_ENTER || 
+			code == KEY_LEFTSHIFT || code == KEY_RIGHTSHIFT || code == KEY_CAPSLOCK ||
+			code == KEY_LEFTCTRL || code == KEY_RIGHTCTRL || code == KEY_LEFTALT || 
+			code == KEY_RIGHTALT || code == KEY_LEFTMETA || code == KEY_RIGHTMETA || code == KEY_SPACE
+		) continue;
+		
+		if (m_shiftActive && !m_keyMap[btn].shift.isEmpty()) {
+			QString text = m_keyMap[btn].shift;
+			if (text == "&") text = "&&"; // Escape the ampersand
+			btn->setText(text);
+
+		} else if (uppercase) {
+			btn->setText(m_keyMap[btn].normal.toUpper());
+
+		} else {
+			btn->setText(m_keyMap[btn].normal);
+		}
+	}
 }
+
 
 void VirtualKeyboard::sendKey(int keycode, bool pressed) {
-    if (m_uinputFd < 0) return;
+	if (m_uinputFd < 0) return;
 
-    struct input_event ev;
-    
-    // 1. Send the Key Event
-    memset(&ev, 0, sizeof(ev));
-    ev.type = EV_KEY;
-    ev.code = keycode;
-    ev.value = pressed ? 1 : 0;
-    if (write(m_uinputFd, &ev, sizeof(ev)) < 0) {
-        qDebug() << "Write error:" << strerror(errno);
-    }
+	struct input_event ev;
+	
+	// 1. Send the Key Event
+	memset(&ev, 0, sizeof(ev));
+	ev.type = EV_KEY;
+	ev.code = keycode;
+	ev.value = pressed ? 1 : 0;
+	if (write(m_uinputFd, &ev, sizeof(ev)) < 0) {
+		qDebug() << "Write error:" << strerror(errno);
+	}
 
-    // 2. Send the Sync Report (Tells the kernel "I'm done with this update")
-    memset(&ev, 0, sizeof(ev));
-    ev.type = EV_SYN;
-    ev.code = SYN_REPORT;
-    ev.value = 0;
-    write(m_uinputFd, &ev, sizeof(ev));
+	// 2. Send the Sync Report (Tells the kernel "I'm done with this update")
+	memset(&ev, 0, sizeof(ev));
+	ev.type = EV_SYN;
+	ev.code = SYN_REPORT;
+	ev.value = 0;
+	write(m_uinputFd, &ev, sizeof(ev));
 }
+
 
 void VirtualKeyboard::mousePressEvent(QMouseEvent *event) {
-    if (event->button() == Qt::LeftButton) {
-        m_dragPosition = event->globalPosition().toPoint();
-        m_isResizing = (event->pos().y() < 10);
-    }
+	if (event->button() == Qt::LeftButton) {
+		// Record where the drag started
+		m_dragPosition = event->globalPosition().toPoint();
+		
+		// Check if we clicked the Resize Handle
+		QRect resizeRect = m_resizeHandle->rect().translated(m_resizeHandle->mapTo(this, QPoint(0, 0)));
+		
+		if (resizeRect.contains(event->pos())) {
+			m_currentEdge = Right;
+		} else {
+			// We'll treat the entire top handle as the "Move" button
+			m_currentEdge = Move;
+		}
+	}
 }
 
-void VirtualKeyboard::mouseMoveEvent(QMouseEvent *event) {
-    if (event->buttons() & Qt::LeftButton) {
-        if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
-            QPoint currentPos = event->globalPosition().toPoint();
-            QPoint delta = currentPos - m_dragPosition;
-            m_dragPosition = currentPos;
-            
-            if (m_isResizing) {
-                int newHeight = height() - delta.y();
-                if (newHeight > 100 && newHeight < 600) {
-                    setFixedHeight(newHeight);
-                }
-                return;
-            }
 
-            int newBottomMargin = lsw->margins().bottom() - delta.y();
-            // Clamp margin so it doesn't go off screen
-            newBottomMargin = qMax(0, newBottomMargin);
-            
-            lsw->setMargins(QMargins(0, 0, 0, newBottomMargin));
-        }
-        if (m_display) wl_display_flush(m_display);
-    }
+void VirtualKeyboard::mouseMoveEvent(QMouseEvent *event) {
+	if (event->buttons() & Qt::LeftButton) {
+		if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
+			QPoint currentGlobalPos = event->globalPosition().toPoint();
+			QPoint delta = currentGlobalPos - m_dragPosition;
+			// Note: We DO NOT update m_dragPosition here if we want a single delta 
+			// from the start of the click to the release.
+
+			if (m_currentEdge == Right) {
+				// Keep resize in real-time as it's usually smoother than moving
+				int nw = qMax(400, width() + delta.x());
+				int nh = qMax(150, height() + delta.y());
+				this->setFixedSize(nw, nh);
+				m_dragPosition = currentGlobalPos; // Update only for resize
+			}
+			// Move logic removed from here to prevent fighting with Release event
+		}
+	}
+}
+
+
+void VirtualKeyboard::mouseReleaseEvent(QMouseEvent *event) {
+	if (event->button() == Qt::LeftButton && m_currentEdge == Move) {
+		if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
+			QPoint delta = event->globalPosition().toPoint() - m_dragPosition;
+			QMargins m = lsw->margins();
+
+			// Calculate new coordinates and prevent "jumping" off-screen
+			int newLeft = qMax(0, m.left() + delta.x());
+			int newTop = qMax(0, m.top() + delta.y());
+
+			lsw->setMargins(QMargins(newLeft, newTop, 0, 0));
+		}
+	}
+	m_currentEdge = None;
+	setCursor(Qt::ArrowCursor);
+}
+
+
+void VirtualKeyboard::resizeEvent(QResizeEvent *event) {
+	QWidget::resizeEvent(event);
+	// No manual move() needed here because m_resizeHandle is managed by handleLayout.
 }
