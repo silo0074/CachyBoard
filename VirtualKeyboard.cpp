@@ -18,6 +18,25 @@
 #include <QTimer>
 #include <fcntl.h>
 
+#include <QStandardPaths>
+
+// QString getSoundPath(const QString &fileName) {
+//     // 1. Check for a user-overridden sound in ~/.local/share/cachyboard/sounds/
+//     QString userPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/sounds/" + fileName;
+//     if (QFile::exists(userPath)) return userPath;
+
+//     // 2. Check for system-installed sounds in /usr/share/cachyboard/sounds/
+//     // QStandardPaths::GenericDataLocation usually returns /usr/share and ~/.local/share
+//     QStringList systemPaths = QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
+//     for (const QString &path : systemPaths) {
+//         QString fullPath = path + "/cachyboard/sounds/" + fileName;
+//         if (QFile::exists(fullPath)) return fullPath;
+//     }
+
+//     // 3. Fallback to embedded resource
+//     return "qrc:/sounds/click.wav";
+// }
+
 VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	connect(this, &QWidget::destroyed, qApp, &QCoreApplication::quit);
 	m_syncTimer = new QTimer(this);
@@ -31,17 +50,19 @@ VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	setMouseTracking(true);
 	initUinput();
 
-	m_clickSound = new QSoundEffect(this);
-	// Make sure to place a click.wav in your build directory or use a resource path
-	QString soundPath = QCoreApplication::applicationDirPath() + "/click.wav";
+	setSoundEffect("click");
 
-	// Check if it exists for debugging
-	if (!QFile::exists(soundPath)) {
-		qWarning() << "Sound file NOT found at:" << soundPath;
-	}
+	// m_clickSound = new QSoundEffect(this);
+	// // Make sure to place a click.wav in your build directory or use a resource path
+	// QString soundPath = QStringLiteral(":/sounds/click.wav");
 
-	m_clickSound->setSource(QUrl::fromLocalFile(soundPath));
-	m_clickSound->setVolume(0.5f);
+	// // Check if it exists for debugging
+	// if (!QFile::exists(soundPath)) {
+	// 	qWarning() << "Sound file NOT found at:" << soundPath;
+	// }
+
+	// m_clickSound->setSource(QUrl::fromLocalFile(soundPath));
+	// m_clickSound->setVolume(0.5f);
 
 	setupUI();
 	// resize(800, 300);
@@ -185,7 +206,7 @@ void VirtualKeyboard::setupUI() {
 	QHBoxLayout *handleLayout = new QHBoxLayout(handle);
 	handleLayout->setContentsMargins(10, 0, 10, 0);
 	
-	QLabel *title = new QLabel("On-Screen Keyboard", handle);
+	QLabel *title = new QLabel(APP_NAME, handle);
 	title->setStyleSheet("color: #aaa; font-size: 11px; font-weight: bold;");
 	
 	QPushButton *closeBtn = new QPushButton("✕", handle);
@@ -458,6 +479,24 @@ void VirtualKeyboard::sendKey(int keycode, bool pressed) {
 	ev.code = SYN_REPORT;
 	ev.value = 0;
 	write(m_uinputFd, &ev, sizeof(ev));
+}
+
+
+void VirtualKeyboard::setSoundEffect(const QString &soundName) {
+    if (soundName == "None") {
+        m_clickSound->setSource(QUrl()); // Clear source to turn off sound
+        return;
+    }
+
+    // Construct the resource path
+    QString resPath = QString("qrc:/sounds/%1.wav").arg(soundName);
+    m_clickSound->setSource(QUrl(resPath));
+	m_clickSound->setVolume(0.5f);
+
+	// Check if it exists for debugging
+	if (!QFile::exists(resPath)) {
+		qWarning() << "Sound file NOT found at:" << resPath;
+	}
 }
 
 

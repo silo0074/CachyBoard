@@ -1,0 +1,20 @@
+[Desktop Entry]
+Categories=Utility;
+Comment[en_US]=Wayland Virtual Keyboard
+Comment=Wayland Virtual Keyboard
+Exec=CachyBoard
+GenericName[en_US]=
+GenericName=
+Icon=CachyBoard
+Keywords=keyboard;osk;virtual;wayland;
+MimeType=
+Name[en_US]=CachyBoard
+Name=CachyBoard
+Path=
+StartupNotify=true
+StartupWMClass=CachyBoard
+Terminal=false
+TerminalOptions=
+Type=Application
+X-KDE-SubstituteUID=false
+X-KDE-Username=

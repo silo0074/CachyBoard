@@ -15,6 +15,7 @@
 
     "cSpell.words": [
 		"Bksp",
+		"cachyboard",
 		"CAPSL",
 		"CAPSLOCK",
 		"EVBIT",
@@ -27,6 +28,7 @@
 		"libxtst",
 		"pacman",
 		"qputenv",
+		"qresource",
 		"RIGHTCTRL",
 		"udevadm",
 		"unpolish",

@@ -1,0 +1,5 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/sounds">
+    <file alias="click.wav">sounds/click.wav</file>
+</qresource>
+</RCC>

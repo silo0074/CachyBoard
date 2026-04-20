@@ -1,5 +1,8 @@
 #include "VirtualKeyboard.h"
 #include <QApplication>
+#include <QLockFile>
+#include <QMessageBox>
+#include <QStandardPaths>
 
 // curl -O src/main/backends/linux/wlroots/native/protocols/virtual-keyboard-unstable-v1.xml
 // sudo pacman -S layer-shell-qt
@@ -25,7 +28,30 @@
 // sudo udevadm control --reload-rules && sudo udevadm trigger
 
 int main(int argc, char *argv[]) {
-	QApplication a(argc, argv);
+	
+	// Construct the Application object
+    QApplication a(argc, argv);
+    
+    // Set the desktop file name (for taskbar/Wayland)
+	// This must match the 'StartupWMClass' in the .desktop file
+    QGuiApplication::setDesktopFileName(APP_NAME);
+	
+	// Create a temporary path for the lock file.
+	// A lock file is a temporary file created when the app starts.
+	// If a second instance tries to start, it sees the file exists and is
+	// "locked" by another Process ID (PID), so it exits.
+	// If app crashes, QLockFile is smart enough to check if the PID stored in the lock file
+	// is still active. If the PID is dead, it will automatically break the old lock
+	// and let the new instance start.
+	QString tmpDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+	QLockFile lockFile(tmpDir + "/" + APP_NAME + "_unique_lock.lock");
+	
+	// Try to lock the file. If it fails, another instance is running.
+	if (!lockFile.tryLock(100)) { // Wait 100ms to be sure
+		qDebug() << APP_NAME << "is already running. Exiting.";
+		return 0;
+	}
+
 
 	// Ensure we use the integrated Wayland support if available
 	VirtualKeyboard w;
