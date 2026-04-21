@@ -9,6 +9,10 @@
 #include <QCursor>
 #include <QCoreApplication>
 #include <QDir>
+#include <QStackedWidget>
+#include <QComboBox>
+#include <QFormLayout>
+#include <QSettings>
 #include <linux/input-event-codes.h>
 #include <unistd.h>
 #include <linux/input.h>
@@ -16,6 +20,8 @@
 #include <vector>
 #include <tuple>
 #include <QTimer>
+#include <QDirIterator>
+#include "Config.h"
 #include <fcntl.h>
 
 #include <QStandardPaths>
@@ -39,9 +45,16 @@
 
 VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	connect(this, &QWidget::destroyed, qApp, &QCoreApplication::quit);
+	m_clickSound = new QSoundEffect(this);
 	m_syncTimer = new QTimer(this);
 	connect(m_syncTimer, &QTimer::timeout, this, &VirtualKeyboard::syncModifiers);
-	m_syncTimer->start(400); // Check every 200ms
+	m_syncTimer->start(500); // Check every n ms
+
+	// List all files in the :/sounds resource directory
+	QDirIterator it(":/sounds", QDirIterator::Subdirectories);
+	while (it.hasNext()) {
+		qDebug() << "Found resource:" << it.next();
+	}
 
 	// Basic setup
 	setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
@@ -49,30 +62,7 @@ VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	this->setMinimumSize(450, 200);
 	setMouseTracking(true);
 	initUinput();
-
-	setSoundEffect("click");
-
-	// m_clickSound = new QSoundEffect(this);
-	// // Make sure to place a click.wav in your build directory or use a resource path
-	// QString soundPath = QStringLiteral(":/sounds/click.wav");
-
-	// // Check if it exists for debugging
-	// if (!QFile::exists(soundPath)) {
-	// 	qWarning() << "Sound file NOT found at:" << soundPath;
-	// }
-
-	// m_clickSound->setSource(QUrl::fromLocalFile(soundPath));
-	// m_clickSound->setVolume(0.5f);
-
 	setupUI();
-	// resize(800, 300);
-
-	setStyleSheet(
-		"QWidget { background-color: rgba(35, 35, 35, 240); border-radius: 0px; }"
-		"QPushButton { background-color: #444; color: white; border: 1px solid #555; "
-		"border-radius: 4px; padding: 5px; font-size: 14pt; font-weight: bold; min-width: 30px; }"
-		"QPushButton:pressed { background-color: #0078d7; }"
-		"QPushButton[active='true'] { background-color: #005a9e; border: 1px solid #00a2ff; }");
 }
 
 
@@ -209,9 +199,16 @@ void VirtualKeyboard::setupUI() {
 	QLabel *title = new QLabel(APP_NAME, handle);
 	title->setStyleSheet("color: #aaa; font-size: 11px; font-weight: bold;");
 	
+	m_settingsBtn = new QPushButton("≡", handle);
+	m_settingsBtn->setToolTip("Settings");
+	m_settingsBtn->setFixedSize(30, 25);
+	m_settingsBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 16pt; }"
+								 "QPushButton:hover { background: #444; }");
+	connect(m_settingsBtn, &QPushButton::clicked, this, &VirtualKeyboard::toggleSettings);
+
 	QPushButton *closeBtn = new QPushButton("✕", handle);
 	// closeBtn->setFixedSize(24, 24);
-	closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 16px;}"
+	closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 18pt;}"
 							"QPushButton:hover { color: #f44; }");
 	connect(closeBtn, &QPushButton::clicked, qApp, &QCoreApplication::quit);
 
@@ -223,11 +220,14 @@ void VirtualKeyboard::setupUI() {
 	m_resizeHandle->setAttribute(Qt::WA_TransparentForMouseEvents);
 	m_resizeHandle->setStyleSheet("background: transparent; color: #666; border: none;");
 
+	handleLayout->insertWidget(0, m_settingsBtn);
 	handleLayout->addWidget(title);
 	handleLayout->addStretch();
 	handleLayout->addWidget(closeBtn);
 	handleLayout->addWidget(m_resizeHandle);
 	mainLayout->addWidget(handle);
+
+	m_stackedWidget = new QStackedWidget(this);
 
 	// Grid for Keys (Tight spacing)
 	QWidget *keysWidget = new QWidget(this);
@@ -269,7 +269,94 @@ void VirtualKeyboard::setupUI() {
 			{KEY_RIGHTALT, "Alt", "", 1.0}, {KEY_RIGHTMETA, "Super", "", 1.0}, {KEY_RIGHTCTRL, "Ctrl", "", 1.0},
 			{KEY_LEFT, "←", "", 1.0}, {KEY_DOWN, "↓", "", 1.0}, {KEY_RIGHT, "→", "", 1.0}});
 
-	mainLayout->addWidget(keysWidget);
+	m_stackedWidget->addWidget(keysWidget);
+
+	// Setup Settings Page
+	setupSettingsUI();
+	m_stackedWidget->addWidget(m_settingsWidget);
+
+	mainLayout->addWidget(m_stackedWidget);
+	loadSettings();
+	// Signals must be connected after loading the settings to prevent saving before loading
+	connect(m_soundCombo, &QComboBox::currentTextChanged, this, &VirtualKeyboard::saveSettings);
+	connect(m_styleCombo, &QComboBox::currentTextChanged, this, &VirtualKeyboard::saveSettings);
+}
+
+void VirtualKeyboard::setupSettingsUI() {
+	m_settingsWidget = new QWidget(this);
+	QVBoxLayout *layout = new QVBoxLayout(m_settingsWidget);
+	layout->setContentsMargins(40, 20, 40, 20);
+	layout->setSpacing(20);
+
+	QLabel *header = new QLabel("Application Settings", m_settingsWidget);
+	header->setStyleSheet("font-size: 18pt; font-weight: bold; color: white;");
+	header->setAlignment(Qt::AlignCenter);
+	layout->addWidget(header);
+
+	QFormLayout *form = new QFormLayout();
+	form->setLabelAlignment(Qt::AlignRight);
+	form->setFormAlignment(Qt::AlignCenter);
+	form->setVerticalSpacing(15);
+	form->setHorizontalSpacing(20);
+
+	m_soundCombo = new QComboBox(m_settingsWidget);
+	m_soundCombo->addItems(Config::Sounds);
+	form->addRow(new QLabel("Key Press Sound:", m_settingsWidget), m_soundCombo);
+
+	m_styleCombo = new QComboBox(m_settingsWidget);
+	m_styleCombo->addItems(Config::Styles.keys());
+	form->addRow(new QLabel("Keyboard Style:", m_settingsWidget), m_styleCombo);
+
+	layout->addLayout(form);
+	layout->addStretch();
+}
+
+
+void VirtualKeyboard::toggleSettings() {
+	if (m_stackedWidget->currentIndex() == 0) {
+		m_stackedWidget->setCurrentIndex(1);
+		m_settingsBtn->setText("⌨");
+		m_settingsBtn->setToolTip("Back to Keyboard");
+	} else {
+		m_stackedWidget->setCurrentIndex(0);
+		m_settingsBtn->setText("≡");
+		m_settingsBtn->setToolTip("Settings");
+	}
+}
+
+
+void VirtualKeyboard::loadSettings() {
+	QSettings settings(APP_NAME, "VirtualKeyboard");
+
+	QString sound = settings.value("sound", Config::DefaultSound).toString();
+	m_soundCombo->setCurrentText(sound);
+	setSoundEffect(sound);
+
+	QString style = settings.value("style", Config::DefaultStyle).toString();
+	m_styleCombo->setCurrentText(style);
+	setStyleSheet(Config::Styles.value(style, Config::Styles.value(Config::DefaultStyle)));
+
+	qDebug() << "Loading settings for" << APP_NAME;
+	qDebug() << "Loading sound" << sound;
+	qDebug() << "Loading style" << style;
+}
+
+
+void VirtualKeyboard::saveSettings() {
+	qDebug() << "Saving settings for" << APP_NAME;
+
+	QSettings settings(APP_NAME, "VirtualKeyboard");
+
+	QString sound = m_soundCombo->currentText();
+	settings.setValue("sound", sound);
+	setSoundEffect(sound);
+
+	QString style = m_styleCombo->currentText();
+	settings.setValue("style", style);
+	setStyleSheet(Config::Styles.value(style));
+
+	qDebug() << "Saving sound" << sound;
+	qDebug() << "Saving style" << style;
 }
 
 
@@ -286,7 +373,6 @@ QPushButton *VirtualKeyboard::createKey(int keycode, const QString &label, const
 
 	connect(btn, &QPushButton::pressed, [this, keycode, btn]() {
 		if (m_clickSound->isLoaded()) m_clickSound->play();
-		// syncModifiers();
 
 		if (keycode == KEY_LEFTSHIFT || keycode == KEY_RIGHTSHIFT) {
 			// Shift (The Modifier): Shift is not a switch; it is a modifier. 
@@ -358,18 +444,20 @@ void VirtualKeyboard::syncModifiers() {
     }
 
     // Check SHIFT (Key state)
+	// Uncommenting this will prevent SHIFT from remaining active
     // KEY_MAX is usually 0x2ff. We check if either Left or Right shift is depressed.
-    unsigned long key_state[MY_BITS_TO_LONGS(KEY_MAX)] = {0};
-    if (ioctl(fd, EVIOCGKEY(sizeof(key_state)), key_state) >= 0) {
-        bool leftShift = (key_state[KEY_LEFTSHIFT / (8 * sizeof(long))] & (1UL << (KEY_LEFTSHIFT % (8 * sizeof(long)))));
-        bool rightShift = (key_state[KEY_RIGHTSHIFT / (8 * sizeof(long))] & (1UL << (KEY_RIGHTSHIFT % (8 * sizeof(long)))));
-        bool anyShift = leftShift || rightShift;
+    // unsigned long key_state[MY_BITS_TO_LONGS(KEY_MAX)] = {0};
+    // if (ioctl(fd, EVIOCGKEY(sizeof(key_state)), key_state) >= 0) {
+    //     bool leftShift = (key_state[KEY_LEFTSHIFT / (8 * sizeof(long))] & (1UL << (KEY_LEFTSHIFT % (8 * sizeof(long)))));
+    //     bool rightShift = (key_state[KEY_RIGHTSHIFT / (8 * sizeof(long))] & (1UL << (KEY_RIGHTSHIFT % (8 * sizeof(long)))));
+    //     bool anyShift = leftShift || rightShift;
 
-        if (m_shiftActive != anyShift) {
-            m_shiftActive = anyShift;
-            updateKeyCaps();
-        }
-    }
+    //     if (m_shiftActive != anyShift) {
+    //         m_shiftActive = anyShift;
+    //         updateKeyCaps();
+    //     }
+    // }
+
     ::close(fd);
 }
 
@@ -482,21 +570,41 @@ void VirtualKeyboard::sendKey(int keycode, bool pressed) {
 }
 
 
+void VirtualKeyboard::sendCombo(int modCommand, int key) {
+    // Press Modifier (e.g., KEY_LEFTCTRL)
+    sendKey(modCommand, true); 
+    
+    // Press Key (e.g., KEY_V)
+    sendKey(key, true);
+    
+    // Release Key
+    sendKey(key, false);
+    
+    // Release Modifier
+    sendKey(modCommand, false);
+}
+
+
 void VirtualKeyboard::setSoundEffect(const QString &soundName) {
+	if (!m_clickSound) return;
     if (soundName == "None") {
         m_clickSound->setSource(QUrl()); // Clear source to turn off sound
         return;
     }
 
-    // Construct the resource path
-    QString resPath = QString("qrc:/sounds/%1.wav").arg(soundName);
-    m_clickSound->setSource(QUrl(resPath));
-	m_clickSound->setVolume(0.5f);
+    // Path for QSoundEffect (needs the URL scheme)
+    QString resUrl = QString("qrc:/sounds/%1.wav").arg(soundName);
+    
+    // Path for QFile::exists (needs the internal colon prefix)
+    QString resPath = QString(":/sounds/%1.wav").arg(soundName);
 
-	// Check if it exists for debugging
-	if (!QFile::exists(resPath)) {
-		qWarning() << "Sound file NOT found at:" << resPath;
-	}
+    // Check existence using the internal path
+    if (!QFile::exists(resPath)) {
+        qWarning() << "Sound file NOT found at:" << resPath;
+    } else {
+        m_clickSound->setSource(QUrl(resUrl));
+        m_clickSound->setVolume(0.5f);
+    }
 }
 
 

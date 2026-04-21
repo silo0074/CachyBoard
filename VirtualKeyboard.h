@@ -9,6 +9,9 @@
 #include <linux/uinput.h>
 #include <QtMultimedia/QSoundEffect>
 #include <QMap>
+#include <QStackedWidget>
+#include <QComboBox>
+#include <QSettings>
 #include <fcntl.h>
 
 class VirtualKeyboard : public QWidget {
@@ -28,7 +31,12 @@ protected:
 private:
 	void initUinput();
 	void setupUI();
+	void setupSettingsUI();
+	void toggleSettings();
+	void loadSettings();
+	void saveSettings();
 	void sendKey(int keycode, bool pressed);
+	void sendCombo(int modCommand, int key);
 	void releaseAllKeys();
 	void updateKeyCaps();
 	void syncModifiers();
@@ -39,6 +47,11 @@ private:
 	int m_uinputFd = -1;
 	QWidget* m_dragHandle;
 	QPushButton *m_resizeHandle;
+	QPushButton *m_settingsBtn;
+	QStackedWidget *m_stackedWidget;
+	QWidget *m_settingsWidget;
+	QComboBox *m_soundCombo;
+	QComboBox *m_styleCombo;
 	QSoundEffect* m_clickSound;
 	QTimer *m_syncTimer;
 

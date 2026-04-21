@@ -27,6 +27,7 @@
 		"libxkbcommon",
 		"libxtst",
 		"pacman",
+		"qlineargradient",
 		"qputenv",
 		"qresource",
 		"RIGHTCTRL",

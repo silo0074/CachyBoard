@@ -38,11 +38,11 @@ find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(XKBCOMMON REQUIRED xkbcommon)
 
-qt_add_resources(${PROJECT_NAME} resources.qrc)
 add_executable(${PROJECT_NAME}
     main.cpp
     VirtualKeyboard.cpp
     VirtualKeyboard.h
+	resources.qrc
 )
 
 # Tell the compiler to look in the build directory for the generated header
