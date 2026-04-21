@@ -31,7 +31,6 @@ set(CMAKE_AUTORCC ON) # Automatically run RCC (if you use .qrc files)
 
 # Get project source directory
 set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/silo0074/CachyBoard")
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
 find_package(LayerShellQt REQUIRED)
@@ -58,15 +57,30 @@ target_link_libraries(${PROJECT_NAME}
 
 # --- INSTALLATION ---
 include(GNUInstallDirs)
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES cachyboard.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
+
+# Install the Executable
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Install the .desktop file
+install(FILES "assets/${PROJECT_NAME_LOWER}.desktop" 
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+)
+
+# Install the Icon
+install(FILES "assets/${PROJECT_NAME_LOWER}.svg" 
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps"
+)
 
 # --- CPACK CONFIGURATION ---
-set(CPACK_PACKAGE_NAME "CachyBoard")
-set(CPACK_PACKAGE_VENDOR "Your Name")
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_VENDOR "Liviu Istrate")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Wayland Virtual Keyboard with Hardware Sync")
-set(CPACK_PACKAGE_CONTACT "your@email.com")
+set(CPACK_PACKAGE_RELEASE ${PROJECT_RELEASE})
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/silo0074/CachyBoard")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "On-screen virtual keyboard for Wayland.")
+set(CPACK_PACKAGE_CONTACT "silo0074@github.com") # Required for DEB
 
 # Architecture logic
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
@@ -75,22 +89,28 @@ else()
     set(CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
-# INSTALL RULES
-# Install the binary
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+# Force the filename format for DEB and RPM
+set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-${PROJECT_RELEASE}-${CPACK_SYSTEM_NAME}")
 
-# Install the .desktop file
-install(FILES ${PROJECT_NAME_LOWER}.desktop DESTINATION share/applications)
+# Specific for Debian to follow convention (all lowercase often preferred)
+set(CPACK_DEBIAN_PACKAGE_NAME "${PROJECT_NAME_LOWER}")
 
-# Install the icon (adjust path as needed)
-install(FILES icons/${PROJECT_NAME_LOWER}.png DESTINATION share/icons/hicolor/scalable/apps)
+set(CPACK_RPM_CHANGELOG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.spec")
+set(CPACK_RPM_PACKAGE_RELEASE ${PROJECT_RELEASE})
+
+set(CPACK_DEBIAN_PACKAGE_RELEASE ${PROJECT_RELEASE})
+set(CPACK_DEBIAN_PACKAGE_LICENSE "GPL-3.0")
 
 
-# DEPENDENCIES
+
+# --- DEPENDENCIES ---
+
 # For DEB (Ubuntu/Debian)
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6widgets6, libqt6multimedia6, layershell-qt")
+# Note: xkbcommon is libxkbcommon0 on Debian
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6widgets6, libqt6multimedia6, layershell-qt, libxkbcommon0")
 
 # For RPM (Fedora/OpenSUSE)
-set(CPACK_RPM_PACKAGE_REQUIRES "qt6-base-widgets, qt6-base-gui, qt6-multimedia, layer-shell-qt, libxkbcommon")
+# Fedora uses qt6-qtbase-gui; OpenSUSE uses qt6-widgets. Using names that satisfy both:
+set(CPACK_RPM_PACKAGE_REQUIRES "qt6-base, qt6-multimedia, layer-shell-qt, libxkbcommon")
 
 include(CPack)

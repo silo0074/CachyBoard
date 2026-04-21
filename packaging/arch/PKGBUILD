@@ -1,0 +1,32 @@
+# Maintainer: Liviu Istrate <silo0074@github.com> h
+pkgname=cachyboard
+# build_all.sh will update this
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="On-screen virtual keyboard for Wayland."
+arch=('x86_64')
+url="https://github.com/silo0074/CachyBoard"
+license=('GPL3')
+changelog=CHANGELOG.spec
+
+# Based on CMake
+depends=('qt6-base' 'qt6-multimedia' 'layer-shell-qt' 'libxkbcommon')
+
+# pkgver() {
+    # 1. Find the line containing 'project'
+    # 2. Match the VERSION keyword and capture the following version number
+    # sed -n '/project(/,/)/p' "/project/CMakeLists.txt" | grep -oP 'VERSION\s+\K[0-9.]+' | head -n1
+# }
+
+build() {
+    # Create the build folder inside the current directory (packaging/arch/build)
+    # Point the source (-S) two levels up to the root
+    cmake -B build -S "/project" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build -j$(nproc)
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+}

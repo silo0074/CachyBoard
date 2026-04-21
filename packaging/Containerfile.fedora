@@ -1,0 +1,16 @@
+# Fedora for clean RPM generation
+FROM fedora:latest
+
+RUN dnf install -y \
+    gcc-c++ \
+    cmake \
+    make \
+    git \
+    rpm-build \
+    qt6-qtbase-devel \
+    qt6-qtmultimedia-devel \
+    layer-shell-qt-devel \
+    libxkbcommon-devel \
+    && dnf clean all
+
+WORKDIR /project

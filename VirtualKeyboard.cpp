@@ -103,7 +103,10 @@ void VirtualKeyboard::releaseAllKeys() {
 		ev.type = EV_KEY;
 		ev.code = i;
 		ev.value = 0; // Release
-		write(m_uinputFd, &ev, sizeof(ev));
+		
+		if (write(m_uinputFd, &ev, sizeof(ev)) < 0) {
+			qWarning() << "Failed to write to uinput device";
+		}	
 	}
 	
 	// Sync the report
@@ -112,7 +115,10 @@ void VirtualKeyboard::releaseAllKeys() {
 	syn.type = EV_SYN;
 	syn.code = SYN_REPORT;
 	syn.value = 0;
-	write(m_uinputFd, &syn, sizeof(syn));
+
+	if (write(m_uinputFd, &syn, sizeof(syn)) < 0) {
+		qWarning() << "Failed to write to uinput device";
+	}
 }
 
 
@@ -566,7 +572,10 @@ void VirtualKeyboard::sendKey(int keycode, bool pressed) {
 	ev.type = EV_SYN;
 	ev.code = SYN_REPORT;
 	ev.value = 0;
-	write(m_uinputFd, &ev, sizeof(ev));
+
+	if (write(m_uinputFd, &ev, sizeof(ev)) < 0) {
+		qWarning() << "Failed to write to uinput device";
+	}
 }
 
 
