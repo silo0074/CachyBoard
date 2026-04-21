@@ -1,3 +1,8 @@
+![C++](https://img.shields.io/badge/C%2B%2B-20%2B-blue?logo=cpp)
+![Framework](https://img.shields.io/badge/Framework-Qt%206-blue?logo=qt)
+![CMake](https://img.shields.io/badge/CMake-3.22%2B-blue?logo=cmake)
+![Release](https://img.shields.io/github/v/release/silo0074/CachyBoard)
+
 # CachyBoard
 
 CachyBoard is a high-performance, customizable on-screen virtual keyboard designed specifically for Wayland compositors (like KWin or wlroots). Built with Qt 6 and LayerShellQt, it provides a seamless overlay experience with low-level key injection.
@@ -9,6 +14,13 @@ CachyBoard is a high-performance, customizable on-screen virtual keyboard design
 *   **Audio Feedback**: Optional "click" sound effects on key presses.
 *   **Wayland Native**: Uses `layer-shell` to stay on top of other windows without interfering with focus.
 *   **Global Layout**: Supports standard QWERTY layout with shift modifiers and special keys.
+
+## Styles
+![Dark 3D](images/Screenshot_style_dark_3d.png)
+![Dark](images/Screenshot_style_dark.png)
+![Midnight Blue](images/Screenshot_style_midnight_blue.png)
+![Supernova Red](images/Screenshot_style_supernova_red.png)
+![Twilight](images/Screenshot_style_twilight.png)
 
 ## Hardware Synchronization & uinput
 
@@ -101,4 +113,4 @@ sudo pacman -S --needed base-devel cmake qt6-base qt6-wayland qt6-multimedia lay
 Launch the application from your app launcher or by running `CachyBoard` in the terminal. Use the "≡" icon to access settings, change themes, or toggle sound effects.
 
 ## License
-CachyBoard is released under the **GPL-3.0 License**.
+This project is licensed under the [GPLv3](https://github.com/silo0074/CachyBoard/blob/main/LICENSE) License.
