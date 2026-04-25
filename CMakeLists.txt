@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # Project info
 project(CachyBoard 
-    VERSION 1.0.0 
+    VERSION 1.0.1 
     LANGUAGES CXX
 )
 set(PROJECT_RELEASE 1) # package version
@@ -113,5 +113,20 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6widgets6, libqt6multimedia6, layershell-
 # For RPM (Fedora/OpenSUSE)
 # Fedora uses qt6-qtbase-gui; OpenSUSE uses qt6-widgets. Using names that satisfy both:
 set(CPACK_RPM_PACKAGE_REQUIRES "qt6-base, qt6-multimedia, layer-shell-qt, libxkbcommon")
+
+
+# CMake uninstall (cmake_uninstall.cmake.in)
+# This file is a template that CMake uses to generate a custom uninstaller 
+# for users who install via make install instead of using .rpm or .deb packages.
+if(NOT TARGET uninstall)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/cmake_uninstall.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+        IMMEDIATE @ONLY)
+
+    add_custom_target(uninstall
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
+endif()
+
 
 include(CPack)

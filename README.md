@@ -5,7 +5,7 @@
 
 # CachyBoard
 
-CachyBoard is a high-performance, customizable on-screen virtual keyboard designed specifically for Wayland compositors (like KWin or wlroots). Built with Qt 6 and LayerShellQt, it provides a seamless overlay experience with low-level key injection.
+CachyBoard is a customizable on-screen virtual keyboard designed specifically for Wayland compositors (like KWin or wlroots). It is built with C++, Qt 6 and LayerShellQt.
 
 ## Features
 
