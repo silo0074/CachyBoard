@@ -70,6 +70,7 @@ private:
 	// Modifiers state
 	bool m_shiftActive = false;
 	bool m_altActive = false;
+	bool m_ctrlActive = false;
 	bool m_metaActive = false;
 	bool m_capsActive = false;
 };

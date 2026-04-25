@@ -112,5 +112,14 @@ sudo pacman -S --needed base-devel cmake qt6-base qt6-wayland qt6-multimedia lay
 ## Usage
 Launch the application from your app launcher or by running `CachyBoard` in the terminal. Use the "≡" icon to access settings, change themes, or toggle sound effects.
 
+## Compatibility
+CachyBoard is designed for **Wayland** compositors that support the Layer Shell protocol:
+* **KDE Plasma** (KWin)
+* **Hyprland**
+* **Sway**
+* **GNOME** (requires the `aylur/gnome-shell-extension-layer-shell` extension)
+
+*Note: X11 is not currently supported.*
+
 ## License
 This project is licensed under the [GPLv3](https://github.com/silo0074/CachyBoard/blob/main/LICENSE) License.

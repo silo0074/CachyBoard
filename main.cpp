@@ -4,12 +4,8 @@
 #include <QMessageBox>
 #include <QStandardPaths>
 
-// curl -O src/main/backends/linux/wlroots/native/protocols/virtual-keyboard-unstable-v1.xml
 // sudo pacman -S layer-shell-qt
-// sudo pacman -S wayland-protocols
-// sudo pacman -S wlr-protocols
-// sudo pacman -S plasma-wayland-protocols
-// sudo pacman -S --needed base-devel cmake qt6-base qt6-wayland wayland-protocols libx11 libxtst pkgconf
+// sudo pacman -S --needed base-devel cmake qt6-base qt6-wayland
 // sudo pacman -S qt6-multimedia # for click sound
 // https://github.com/onboard-osk/onboard/tree/main/sounds
 
@@ -34,7 +30,9 @@ int main(int argc, char *argv[]) {
     
     // Set the desktop file name (for taskbar/Wayland)
 	// This must match the 'StartupWMClass' in the .desktop file
-    QGuiApplication::setDesktopFileName(APP_NAME);
+    QGuiApplication::setDesktopFileName(APP_NAME_LOWER); // Matches cachyboard.desktop
+    a.setApplicationName(APP_NAME);
+    // a.setOrganizationName("CachyOS");
 	
 	// Create a temporary path for the lock file.
 	// A lock file is a temporary file created when the app starts.

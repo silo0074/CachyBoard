@@ -13,6 +13,7 @@ string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 
 # Pass the version to C++ as a macro
 add_definitions(-DAPP_VERSION="${PROJECT_VERSION}")
+add_definitions(-DAPP_NAME_LOWER="${PROJECT_NAME_LOWER}")
 add_definitions(-DAPP_NAME="${PROJECT_NAME}")
 
 # Adds the flag to all targets in the project

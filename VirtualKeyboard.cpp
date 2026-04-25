@@ -67,6 +67,7 @@ VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 
 
 VirtualKeyboard::~VirtualKeyboard() {
+	saveSettings();
 	if (m_uinputFd == -1) return; // Already cleaned up
 	qDebug() << "Running destructor";
 	qDebug() << "m_uinputFd is" << m_uinputFd;
@@ -172,15 +173,20 @@ void VirtualKeyboard::showEvent(QShowEvent *event) {
 			lsw->setAnchors(anchors);
 			lsw->setExclusiveZone(0);
 			
-			// Force the height so it doesn't fill the screen
-			resize(QGuiApplication::primaryScreen()->size().width() * 0.8, 300);
+			QSettings settings(APP_NAME, "VirtualKeyboard");
+			int sw = QGuiApplication::primaryScreen()->size().width();
+			int sh = QGuiApplication::primaryScreen()->size().height();
+			int defW = sw * 0.6;
+			int defL = (sw - defW) / 2;
+			int defT = sh - 350;
 
-			// Position it at the bottom of the screen initially using margins
-			int screenHeight = QGuiApplication::primaryScreen()->size().height();
-			int screenWidth = QGuiApplication::primaryScreen()->size().width();
-			int keyboardWidth = screenWidth * 0.8; 
-			int leftMargin = (screenWidth - keyboardWidth) / 2; // Center math
-			lsw->setMargins(QMargins(leftMargin, screenHeight - 350, leftMargin, 0));
+			int w = settings.value("geometry/width", defW).toInt();
+			int h = settings.value("geometry/height", 300).toInt();
+			int left = settings.value("geometry/left", defL).toInt();
+			int top = settings.value("geometry/top", defT).toInt();
+
+			resize(w, h);
+			lsw->setMargins(QMargins(left, top, 0, 0));
 		}
 	}
 	updateKeyCaps();
@@ -214,8 +220,8 @@ void VirtualKeyboard::setupUI() {
 
 	QPushButton *closeBtn = new QPushButton("✕", handle);
 	// closeBtn->setFixedSize(24, 24);
-	closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 18pt;}"
-							"QPushButton:hover { color: #f44; }");
+	// closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 18pt;}"
+							// "QPushButton:hover { color: #f44; }");
 	connect(closeBtn, &QPushButton::clicked, qApp, &QCoreApplication::quit);
 
 	m_resizeHandle = new QPushButton("◢", this);
@@ -271,7 +277,7 @@ void VirtualKeyboard::setupUI() {
 			{KEY_SLASH, "/", "?", 1.0}, {KEY_RIGHTSHIFT, "Shift", "", 1.5}, {KEY_UP, "↑", "", 1.0}});
 
 	// Row 5: Bottom
-	addRow({{KEY_LEFTCTRL, "Ctrl", "", 1.0}, {KEY_LEFTMETA, "Super", "", 1.0}, {KEY_LEFTALT, "Alt", "", 1.0}, {KEY_SPACE, "Space", "", 6.3},
+	addRow({{KEY_LEFTCTRL, "Ctrl", "", 1.0}, {KEY_LEFTMETA, "Super", "", 1.0}, {KEY_LEFTALT, "Alt", "", 1.0}, {KEY_SPACE, "", "", 6.3},
 			{KEY_RIGHTALT, "Alt", "", 1.0}, {KEY_RIGHTMETA, "Super", "", 1.0}, {KEY_RIGHTCTRL, "Ctrl", "", 1.0},
 			{KEY_LEFT, "←", "", 1.0}, {KEY_DOWN, "↓", "", 1.0}, {KEY_RIGHT, "→", "", 1.0}});
 
@@ -361,6 +367,16 @@ void VirtualKeyboard::saveSettings() {
 	settings.setValue("style", style);
 	setStyleSheet(Config::Styles.value(style));
 
+	settings.setValue("geometry/width", width());
+	settings.setValue("geometry/height", height());
+	if (windowHandle()) {
+		if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
+			QMargins m = lsw->margins();
+			settings.setValue("geometry/left", m.left());
+			settings.setValue("geometry/top", m.top());
+		}
+	}
+
 	qDebug() << "Saving sound" << sound;
 	qDebug() << "Saving style" << style;
 }
@@ -380,7 +396,15 @@ QPushButton *VirtualKeyboard::createKey(int keycode, const QString &label, const
 	connect(btn, &QPushButton::pressed, [this, keycode, btn]() {
 		if (m_clickSound->isLoaded()) m_clickSound->play();
 
-		if (keycode == KEY_LEFTSHIFT || keycode == KEY_RIGHTSHIFT) {
+		if (keycode == KEY_LEFTCTRL) {
+			m_ctrlActive = !m_ctrlActive;
+			btn->setProperty("active", m_ctrlActive);
+			btn->style()->unpolish(btn);
+			btn->style()->polish(btn);
+
+			qDebug() << "CTRL pressed. m_ctrlActive is:" << m_ctrlActive;
+
+		} else if (keycode == KEY_LEFTSHIFT || keycode == KEY_RIGHTSHIFT) {
 			// Shift (The Modifier): Shift is not a switch; it is a modifier. 
 			// It is only active while the key is physically held down. 
 			// If you send Press + Release instantly, the Shift state is gone 
@@ -417,13 +441,32 @@ QPushButton *VirtualKeyboard::createKey(int keycode, const QString &label, const
 			updateKeyCaps();
                         
 		} else {
-			// Regular keys release on the released() signal below
-			sendKey(keycode, true);
+			if (m_ctrlActive) {
+				// Reset the internal state
+				m_ctrlActive = false;
+		
+				// Perform the actual combo (e.g., CTRL+V)
+				sendCombo(KEY_LEFTCTRL, keycode);
+		
+				qDebug() << "Combo finished. m_ctrlActive is now:" << m_ctrlActive;
+		
+				// Update the VISUAL state of the CTRL button
+				if (m_buttons.contains(KEY_LEFTCTRL)) {
+					QPushButton *ctrlBtn = m_buttons[KEY_LEFTCTRL];
+					ctrlBtn->setProperty("active", false); // Visually deactivate
+					ctrlBtn->style()->unpolish(ctrlBtn);
+					ctrlBtn->style()->polish(ctrlBtn);
+				}
+				
+			} else {
+				// Regular keys release on the released() signal below
+				sendKey(keycode, true);
+			}
 		}
 	});
 
 	connect(btn, &QPushButton::released, [this, keycode]() {
-		if (keycode != KEY_LEFTSHIFT && keycode != KEY_RIGHTSHIFT && keycode != KEY_CAPSLOCK)
+		if (keycode != KEY_LEFTCTRL && keycode != KEY_LEFTSHIFT && keycode != KEY_RIGHTSHIFT && keycode != KEY_CAPSLOCK)
 			sendKey(keycode, false);
 	});
 
