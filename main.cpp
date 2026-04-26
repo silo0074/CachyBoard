@@ -7,7 +7,6 @@
 // sudo pacman -S layer-shell-qt
 // sudo pacman -S --needed base-devel cmake qt6-base qt6-wayland
 // sudo pacman -S qt6-multimedia # for click sound
-// https://github.com/onboard-osk/onboard/tree/main/sounds
 
 // cat /etc/udev/rules.d/60-uinput.rules 
 

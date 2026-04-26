@@ -4,10 +4,18 @@
 #include <QString>
 #include <QStringList>
 #include <QMap>
+#include <QPair>
 
 namespace Config {
-    // List of available sounds (filenames in qrc:/sounds/)
-    inline const QStringList Sounds = {"None", "click"};
+    // List of available sounds (Friendly Name -> Filename)
+    inline const QList<QPair<QString, QString>> Sounds = {
+        {"None", ""},
+        {"Default Click", "click.wav"},
+        {"Right Click", "irinairinafomicheva-rclick-13693.wav"},
+        {"Touchpad Click", "lesiakower-laptop-touchpad-click-384384.wav"},
+        {"Typewriter", "matthewvakaliuk73627-mouse-click-290204.wav"},
+        {"Select Sound", "u_2fbuaev0zn-select-sound-121244.wav"}
+    };
 
     // Dictionary of available styles
     inline const QMap<QString, QString> Styles = {
@@ -50,6 +58,34 @@ namespace Config {
 			"QLabel { color: #888;}"
 			"QComboBox { background-color: #222; color: white; border: 1px solid #444; padding: 5px; border-radius: 3px; }"
 			"QComboBox QAbstractItemView { background-color: #444; color: white; selection-background-color: #0078d7; }"
+		},
+
+		{"Light 3D", 
+			"QWidget { background-color: rgba(240, 240, 240, 240); border-radius: 0px; }"
+			"QPushButton { "
+			"  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #e0e0e0); "
+			"  color: #333; "
+			"  border-top: 1px solid #ffffff; "
+			"  border-left: 1px solid #eeeeee; "
+			"  border-right: 2px solid #cccccc; "
+			"  border-bottom: 5px solid #999999; "
+			"  border-radius: 5px; "
+			"  padding: 5px; font-size: 14pt; font-weight: bold; min-width: 30px; "
+			"}"
+			"QPushButton:pressed { "
+			"  background-color: #d0d0d0; "
+			"  border-bottom: 1px solid #999; "
+			"  margin-top: 4px; "
+			"}"
+			"QPushButton[active='true'] { "
+			"  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #00a2ff, stop:1 #0078d7); "
+			"  color: white; "
+			"  border: 1px solid #005a9e; "
+			"  border-bottom: 4px solid #003a66; "
+			"}"
+			"QLabel { color: #555;}"
+			"QComboBox { background-color: #eee; color: #222; border: 1px solid #ccc; padding: 5px; border-radius: 3px; }"
+			"QComboBox QAbstractItemView { background-color: #fff; color: #222; selection-background-color: #0078d7; }"
 		},
 
         {"Midnight Blue", 
@@ -165,7 +201,7 @@ namespace Config {
     };
 
     inline const QString DefaultStyle = "Dark";
-    inline const QString DefaultSound = "click";
+    inline const QString DefaultSound = "Default Click";
 }
 
 #endif // CONFIG_H

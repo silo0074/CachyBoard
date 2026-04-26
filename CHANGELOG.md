@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.2] - 2026-04-26
+### Added
+- New click sounds included
+- New Light 3D style
+
 ## [1.0.1] - 2026-04-25
 ### Added
 - Added CTRL key combo for functionality such as CTRL+V or CTRL+C.

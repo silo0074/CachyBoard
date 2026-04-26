@@ -1,5 +1,9 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/sounds">
     <file alias="click.wav">sounds/click.wav</file>
+    <file alias="irinairinafomicheva-rclick-13693.wav">sounds/irinairinafomicheva-rclick-13693.wav</file>
+    <file alias="lesiakower-laptop-touchpad-click-384384.wav">sounds/lesiakower-laptop-touchpad-click-384384.wav</file>
+    <file alias="matthewvakaliuk73627-mouse-click-290204.wav">sounds/matthewvakaliuk73627-mouse-click-290204.wav</file>
+    <file alias="u_2fbuaev0zn-select-sound-121244.wav">sounds/u_2fbuaev0zn-select-sound-121244.wav</file>
 </qresource>
 </RCC>

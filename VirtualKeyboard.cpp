@@ -220,8 +220,8 @@ void VirtualKeyboard::setupUI() {
 
 	QPushButton *closeBtn = new QPushButton("✕", handle);
 	// closeBtn->setFixedSize(24, 24);
-	// closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 18pt;}"
-							// "QPushButton:hover { color: #f44; }");
+	closeBtn->setStyleSheet("QPushButton { background: transparent; color: white; border: none; font-size: 18pt;}"
+							"QPushButton:hover { color: #f44; }");
 	connect(closeBtn, &QPushButton::clicked, qApp, &QCoreApplication::quit);
 
 	m_resizeHandle = new QPushButton("◢", this);
@@ -294,6 +294,7 @@ void VirtualKeyboard::setupUI() {
 	connect(m_styleCombo, &QComboBox::currentTextChanged, this, &VirtualKeyboard::saveSettings);
 }
 
+
 void VirtualKeyboard::setupSettingsUI() {
 	m_settingsWidget = new QWidget(this);
 	QVBoxLayout *layout = new QVBoxLayout(m_settingsWidget);
@@ -301,7 +302,7 @@ void VirtualKeyboard::setupSettingsUI() {
 	layout->setSpacing(20);
 
 	QLabel *header = new QLabel("Application Settings", m_settingsWidget);
-	header->setStyleSheet("font-size: 18pt; font-weight: bold; color: white;");
+	// header->setStyleSheet("font-size: 18pt; font-weight: bold; color: white;");
 	header->setAlignment(Qt::AlignCenter);
 	layout->addWidget(header);
 
@@ -312,7 +313,9 @@ void VirtualKeyboard::setupSettingsUI() {
 	form->setHorizontalSpacing(20);
 
 	m_soundCombo = new QComboBox(m_settingsWidget);
-	m_soundCombo->addItems(Config::Sounds);
+	for (const auto &soundPair : Config::Sounds) {
+		m_soundCombo->addItem(soundPair.first);
+	}
 	form->addRow(new QLabel("Key Press Sound:", m_settingsWidget), m_soundCombo);
 
 	m_styleCombo = new QComboBox(m_settingsWidget);
@@ -639,23 +642,32 @@ void VirtualKeyboard::sendCombo(int modCommand, int key) {
 
 void VirtualKeyboard::setSoundEffect(const QString &soundName) {
 	if (!m_clickSound) return;
-    if (soundName == "None") {
-        m_clickSound->setSource(QUrl()); // Clear source to turn off sound
-        return;
-    }
 
-    // Path for QSoundEffect (needs the URL scheme)
-    QString resUrl = QString("qrc:/sounds/%1.wav").arg(soundName);
-    
-    // Path for QFile::exists (needs the internal colon prefix)
-    QString resPath = QString(":/sounds/%1.wav").arg(soundName);
+	QString fileName;
+	for (const auto &pair : Config::Sounds) {
+		if (pair.first == soundName) {
+			fileName = pair.second;
+			break;
+		}
+	}
 
-    // Check existence using the internal path
+	if (fileName.isEmpty()) {
+		m_clickSound->setSource(QUrl()); // Clear source to turn off sound
+		return;
+	}
+
+	// Path for QSoundEffect (needs the URL scheme)
+	QString resUrl = QString("qrc:/sounds/%1").arg(fileName);
+	
+	// Path for QFile::exists (needs the internal colon prefix)
+	QString resPath = QString(":/sounds/%1").arg(fileName);
+
+	// Check existence using the internal path
     if (!QFile::exists(resPath)) {
         qWarning() << "Sound file NOT found at:" << resPath;
     } else {
         m_clickSound->setSource(QUrl(resUrl));
-        m_clickSound->setVolume(0.5f);
+        m_clickSound->setVolume(0.9f);
     }
 }
 

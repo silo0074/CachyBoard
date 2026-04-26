@@ -69,7 +69,7 @@ podman run --rm \
     -v "${ROOT_DIR}:/project:Z" \
     -w /project/packaging/arch \
     cachyboard-arch-builder \
-    bash -c "makepkg -f --noconfirm && mv *.pkg.tar.zst /project/dist/"
+    bash -c "PACKAGER='Liviu Istrate <silo0074@github.com>' makepkg -f --noconfirm && mv *.pkg.tar.zst /project/dist/"
 
 # 5. Generate Checksums
 echo "[5/5] ---------- Generating SHA256 Checksums..."
