@@ -5,7 +5,7 @@
 
 # CachyBoard
 
-CachyBoard is a customizable on-screen virtual keyboard designed specifically for Wayland compositors (like KWin or wlroots). It is built with C++, Qt 6 and LayerShellQt.
+CachyBoard is a customizable on-screen virtual keyboard for Linux that works on Wayland and X11. It is built with C++, Qt 6 and LayerShellQt.
 
 ## Features
 
@@ -82,8 +82,8 @@ sudo pacman -U cachyboard-1.0.0-1-x86_64.pkg.tar.zst
 
 ### Dependencies
 Ensure you have the following installed (package names may vary by distro):
-*   Qt 6 (Base, Multimedia, Wayland)
-*   LayerShellQt
+*   Qt 6 (Base, Multimedia)
+*   LayerShellQt (only on Wayland)
 *   libxkbcommon
 *   CMake & Extra-CMake-Modules
 
@@ -118,8 +118,6 @@ CachyBoard is designed for **Wayland** compositors that support the Layer Shell 
 * **Hyprland**
 * **Sway**
 * **GNOME** (requires the `aylur/gnome-shell-extension-layer-shell` extension)
-
-*Note: X11 is not currently supported.*
 
 ## Credits
 Typing sounds were obtained from these sources:
