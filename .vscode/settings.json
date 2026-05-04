@@ -28,6 +28,7 @@
 		"keysym",
 		"LEFTCTRL",
 		"lesiakower",
+		"libcanberra",
 		"libx",
 		"libxkbcommon",
 		"libxtst",

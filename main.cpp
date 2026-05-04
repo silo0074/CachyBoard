@@ -22,6 +22,19 @@
 
 // sudo udevadm control --reload-rules && sudo udevadm trigger
 
+// ps -o rss,command -p $(pgrep cachyboard)
+//   RSS COMMAND
+// 155120 ./cachyboard
+
+// ps -o rss,command -p $(pgrep cachyboard)
+//   RSS COMMAND
+// Using Qt Multimedia
+// 218344 /usr/bin/cachyboard
+// Using libcanberra
+// 147708 /usr/bin/cachyboard
+
+
+
 int main(int argc, char *argv[]) {
 	
 	// Construct the Application object

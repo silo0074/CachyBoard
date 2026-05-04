@@ -1,12 +1,13 @@
 FROM docker.io/cachyos/cachyos:latest
 
 # Added layer-shell-qt and libxkbcommon
+# Replaced qt6-multimedia with libcanberra
 RUN pacman -Syu --noconfirm && pacman -S --noconfirm \
     base-devel \
     cmake \
     git \
     qt6-base \
-    qt6-multimedia \
+    libcanberra \
     layer-shell-qt \
     libxkbcommon \
     && pacman -Scc --noconfirm

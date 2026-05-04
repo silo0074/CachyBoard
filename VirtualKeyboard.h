@@ -7,12 +7,13 @@
 #include <QPushButton>
 #include <QWidget>
 #include <linux/uinput.h>
-#include <QtMultimedia/QSoundEffect>
+// #include <QtMultimedia/QSoundEffect>
 #include <QMap>
 #include <QStackedWidget>
 #include <QComboBox>
 #include <QSettings>
 #include <fcntl.h>
+#include <canberra.h>
 
 class VirtualKeyboard : public QWidget {
   	Q_OBJECT
@@ -53,7 +54,9 @@ private:
 	QWidget *m_settingsWidget;
 	QComboBox *m_soundCombo;
 	QComboBox *m_styleCombo;
-	QSoundEffect* m_clickSound;
+	// QSoundEffect* m_clickSound;
+	ca_context *ctx;
+	QString m_currentSoundPath;
 	QTimer *m_syncTimer;
 
 	// Platform state

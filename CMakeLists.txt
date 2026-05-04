@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 # Project info
 project(CachyBoard
-    VERSION 1.0.3 
-    LANGUAGES CXX
+    VERSION 1.0.4 
+    LANGUAGES C CXX
 )
 set(PROJECT_RELEASE 1) # package version
 
@@ -33,16 +33,18 @@ set(CMAKE_AUTORCC ON) # Automatically run RCC (if you use .qrc files)
 # Get project source directory
 set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
+# find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
 find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
+pkg_check_modules(CANBERRA REQUIRED libcanberra)
 pkg_check_modules(XKBCOMMON REQUIRED xkbcommon)
 
 add_executable(${PROJECT_NAME_LOWER}
     main.cpp
     VirtualKeyboard.cpp
     VirtualKeyboard.h
-	resources.qrc
+	# resources.qrc
 )
 
 # Tell the compiler to look in the build directory for the generated header
@@ -51,7 +53,8 @@ include_directories(${XKBCOMMON_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME_LOWER}
     Qt6::Widgets
-    Qt6::Multimedia
+    # Qt6::Multimedia
+	${CANBERRA_LIBRARIES}
     LayerShellQt::Interface
 	${XKBCOMMON_LIBRARIES}
 )
@@ -72,6 +75,18 @@ install(FILES "assets/${PROJECT_NAME_LOWER}.desktop"
 # Install the Icon
 install(FILES "assets/${PROJECT_NAME_LOWER}.svg" 
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps"
+)
+
+# Install sound files
+# Collect all wav files from the sounds directory
+file(GLOB SOUND_FILES "${CMAKE_CURRENT_SOURCE_DIR}/sounds/*.wav")
+
+# (Optional) Group them in IDEs like Qt Creator
+# source_group("Resources/Sounds" FILES ${SOUND_FILES})
+
+# Install the sounds to /usr/share/cachyboard/sounds/
+install(FILES ${SOUND_FILES}
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME_LOWER}/sounds"
 )
 
 # --- CPACK CONFIGURATION ---
@@ -108,11 +123,13 @@ set(CPACK_DEBIAN_PACKAGE_LICENSE "GPL-3.0")
 
 # For DEB (Ubuntu/Debian)
 # Note: xkbcommon is libxkbcommon0 on Debian
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6widgets6, libqt6multimedia6, layershell-qt, libxkbcommon0")
+# Replaced libqt6multimedia6 with libcanberra0
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6widgets6, libcanberra0, layershell-qt, libxkbcommon0")
 
 # For RPM (Fedora/OpenSUSE)
 # Fedora uses qt6-qtbase-gui; OpenSUSE uses qt6-widgets. Using names that satisfy both:
-set(CPACK_RPM_PACKAGE_REQUIRES "qt6-base, qt6-multimedia, layer-shell-qt, libxkbcommon")
+# Replaced qt6-multimedia with libcanberra
+set(CPACK_RPM_PACKAGE_REQUIRES "qt6-base, libcanberra, layer-shell-qt, libxkbcommon")
 
 
 # CMake uninstall (cmake_uninstall.cmake.in)

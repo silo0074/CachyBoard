@@ -4,14 +4,16 @@ FROM ubuntu:noble
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Added libxkbcommon-dev and liblayershellqtinterface-dev
+# Replaced qt6-multimedia-dev with libcanberra-dev
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
     file \
+    pkg-config \
     dpkg-dev \
     qt6-base-dev \
-    qt6-multimedia-dev \
+    libcanberra-dev \
     liblayershellqtinterface-dev \
     libxkbcommon-dev \
     && rm -rf /var/lib/apt/lists/*

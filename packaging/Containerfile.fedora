@@ -1,14 +1,15 @@
 # Fedora for clean RPM generation
 FROM fedora:latest
 
+# Replaced qt6-qtmultimedia-devel with libcanberra-devel
 RUN dnf install -y \
     gcc-c++ \
     cmake \
     make \
     git \
+    libcanberra-devel \
     rpm-build \
     qt6-qtbase-devel \
-    qt6-qtmultimedia-devel \
     layer-shell-qt-devel \
     libxkbcommon-devel \
     && dnf clean all

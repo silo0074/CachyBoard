@@ -25,6 +25,7 @@
 #include <fcntl.h>
 
 #include <QStandardPaths>
+#include <canberra.h>
 
 // QString getSoundPath(const QString &fileName) {
 //     // 1. Check for a user-overridden sound in ~/.local/share/cachyboard/sounds/
@@ -45,7 +46,11 @@
 
 VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	connect(this, &QWidget::destroyed, qApp, &QCoreApplication::quit);
-	m_clickSound = new QSoundEffect(this);
+	// Sound
+	// m_clickSound = new QSoundEffect(this);
+	ctx = nullptr;
+	ca_context_create(&ctx);
+
 	m_syncTimer = new QTimer(this);
 	connect(m_syncTimer, &QTimer::timeout, this, &VirtualKeyboard::syncModifiers);
 	m_syncTimer->start(500); // Check every n ms
@@ -78,6 +83,9 @@ VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 
 VirtualKeyboard::~VirtualKeyboard() {
 	saveSettings();
+	if (ctx) {
+		ca_context_destroy(ctx);
+	}
 	if (m_uinputFd == -1) return; // Already cleaned up
 	qDebug() << "Running destructor";
 	qDebug() << "m_uinputFd is" << m_uinputFd;
@@ -223,7 +231,8 @@ void VirtualKeyboard::setupUI() {
 	QHBoxLayout *handleLayout = new QHBoxLayout(handle);
 	handleLayout->setContentsMargins(10, 0, 10, 0);
 	
-	QLabel *title = new QLabel(APP_NAME, handle);
+	// This merges "CachyBoard" + " " + "1.0.3" into one string at compile time
+	QLabel *title = new QLabel(APP_NAME " v" APP_VERSION, handle);
 	title->setStyleSheet("color: #aaa; font-size: 11px; font-weight: bold;");
 	
 	m_settingsBtn = new QPushButton("≡", handle);
@@ -418,7 +427,14 @@ QPushButton *VirtualKeyboard::createKey(int keycode, const QString &label, const
 	m_keyMap[btn] = {label, shiftLabel.isEmpty() ? label.toUpper() : shiftLabel};
 
 	connect(btn, &QPushButton::pressed, [this, keycode, btn]() {
-		if (m_clickSound->isLoaded()) m_clickSound->play();
+		// if (m_clickSound->isLoaded()) m_clickSound->play();
+		if (ctx && !m_currentSoundPath.isEmpty()) {
+			ca_context_play(ctx, 0,
+				CA_PROP_EVENT_ID, "button-pressed",
+				CA_PROP_MEDIA_FILENAME, m_currentSoundPath.toUtf8().constData(),
+				NULL
+			);
+		}
 
 		if (keycode == KEY_LEFTCTRL) {
 			m_ctrlActive = !m_ctrlActive;
@@ -662,7 +678,8 @@ void VirtualKeyboard::sendCombo(int modCommand, int key) {
 
 
 void VirtualKeyboard::setSoundEffect(const QString &soundName) {
-	if (!m_clickSound) return;
+	if (!ctx) return;
+	// if (!m_clickSound) return;
 
 	QString fileName;
 	for (const auto &pair : Config::Sounds) {
@@ -673,23 +690,51 @@ void VirtualKeyboard::setSoundEffect(const QString &soundName) {
 	}
 
 	if (fileName.isEmpty()) {
-		m_clickSound->setSource(QUrl()); // Clear source to turn off sound
+		// m_clickSound->setSource(QUrl()); // Clear source to turn off sound
+		m_currentSoundPath.clear();
 		return;
 	}
 
 	// Path for QSoundEffect (needs the URL scheme)
-	QString resUrl = QString("qrc:/sounds/%1").arg(fileName);
+	// QString resUrl = QString("qrc:/sounds/%1").arg(fileName);
 	
 	// Path for QFile::exists (needs the internal colon prefix)
-	QString resPath = QString(":/sounds/%1").arg(fileName);
+	// QString resPath = QString(":/sounds/%1").arg(fileName);
+
+	// libcanberra needs physical filesystem paths.
+	// We search in the application directory and system paths.
+	QStringList searchPaths = {
+		// Check local build folder for development
+        QCoreApplication::applicationDirPath() + "/../sounds/",
+        
+        // Check user local data (~/.local/share/cachyboard/sounds/)
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/sounds/",
+        
+        // Check system install path (/usr/share/cachyboard/sounds/)
+		"/usr/share/" + QString(APP_NAME_LOWER) + "/sounds/"
+	};
 
 	// Check existence using the internal path
-    if (!QFile::exists(resPath)) {
-        qWarning() << "Sound file NOT found at:" << resPath;
-    } else {
-        m_clickSound->setSource(QUrl(resUrl));
-        m_clickSound->setVolume(0.9f);
-    }
+    // if (!QFile::exists(resPath)) {
+    //     qWarning() << "Sound file NOT found at:" << resPath;
+    // } else {
+    //     // m_clickSound->setSource(QUrl(resUrl));
+    //     // m_clickSound->setVolume(0.9f);
+    // }
+
+	m_currentSoundPath.clear();
+	for (const QString &dir : searchPaths) {
+		QString fullPath = dir + fileName;
+		qWarning() << "Sound file path:" << fullPath;
+		if (QFile::exists(fullPath)) {
+			m_currentSoundPath = fullPath;
+			break;
+		}
+	}
+
+	if (m_currentSoundPath.isEmpty()) {
+		qWarning() << "Sound file" << fileName << "not found in search paths. Canberra cannot play from qrc resources.";
+	}
 }
 
 

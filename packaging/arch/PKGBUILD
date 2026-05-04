@@ -1,7 +1,7 @@
 # Maintainer: Liviu Istrate <silo0074@github.com> h
 pkgname=cachyboard
 # build_all.sh will update this
-pkgver=1.0.3
+pkgver=1.0.4
 pkgrel=1
 pkgdesc="On-screen virtual keyboard for Wayland."
 arch=('x86_64')
@@ -10,7 +10,8 @@ license=('GPL3')
 changelog=CHANGELOG.spec
 
 # Based on CMake
-depends=('qt6-base' 'qt6-multimedia' 'layer-shell-qt' 'libxkbcommon')
+# Replaced qt6-multimedia with libcanberra
+depends=('qt6-base' 'libcanberra' 'layer-shell-qt' 'libxkbcommon')
 
 # pkgver() {
     # 1. Find the line containing 'project'
