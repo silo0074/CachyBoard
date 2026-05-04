@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.4] - 2026-05-04
+### Improved
+- Switched sound backend from Qt Multimedia to libcanberra to reduce memory usage by 50%.
+
 ## [1.0.3] - 2026-05-04
 ### Added
 - Support for X11

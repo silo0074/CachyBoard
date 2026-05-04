@@ -1,3 +1,6 @@
+* 2026-05-04 Liviu Istrate <github.com@silo0074> - 1.0.4
+- Switched sound backend from Qt Multimedia to libcanberra to reduce memory usage by 50%.
+
 * 2026-05-04 Liviu Istrate <github.com@silo0074> - 1.0.3
 - Support for X11
 
