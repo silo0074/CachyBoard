@@ -10,7 +10,7 @@ namespace Config {
     // List of available sounds (Friendly Name -> Filename)
     inline const QList<QPair<QString, QString>> Sounds = {
         {"None", ""},
-        {"Default Click", "click.wav"},
+        {"Click", "click.wav"},
         {"Right Click", "irinairinafomicheva-rclick-13693.wav"},
         {"Touchpad Click", "lesiakower-laptop-touchpad-click-384384.wav"},
         {"Typewriter", "matthewvakaliuk73627-mouse-click-290204.wav"},
@@ -201,7 +201,7 @@ namespace Config {
     };
 
     inline const QString DefaultStyle = "Dark";
-    inline const QString DefaultSound = "Default Click";
+    inline const QString DefaultSound = "Select Sound";
 }
 
 #endif // CONFIG_H

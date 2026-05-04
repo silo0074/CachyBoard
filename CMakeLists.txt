@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Project info
-project(CachyBoard 
+project(CachyBoard
     VERSION 1.0.2 
     LANGUAGES CXX
 )

@@ -44,6 +44,7 @@ private:
 	void setSoundEffect(const QString &soundName);
 	QPushButton *createKey(int keycode, const QString &label, const QString &shiftLabel = QString(), float stretch = 1.0);
 
+	bool m_isWayland = true;
 	int m_uinputFd = -1;
 	QWidget* m_dragHandle;
 	QPushButton *m_resizeHandle;

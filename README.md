@@ -122,7 +122,7 @@ CachyBoard is designed for **Wayland** compositors that support the Layer Shell 
 *Note: X11 is not currently supported.*
 
 ## Credits
-Click sound were obtained from these sources:
+Typing sounds were obtained from these sources:
 * Default Click: [click.wav](https://github.com/onboard-osk/onboard/tree/main/sounds)
 * Right Click: [irinairinafomicheva-rclick-13693.wav](https://pixabay.com/users/irinairinafomicheva-25140203)
 * Touchpad Click: [lesiakower-laptop-touchpad-click-384384.wav](https://pixabay.com/users/lesiakower-25701529)

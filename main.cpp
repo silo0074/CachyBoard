@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-
+	
 	// Ensure we use the integrated Wayland support if available
 	VirtualKeyboard w;
 	w.show();

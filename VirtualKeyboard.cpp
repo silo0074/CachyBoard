@@ -57,10 +57,20 @@ VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	}
 
 	// Basic setup
-	setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
+	setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
 	setAttribute(Qt::WA_TranslucentBackground);
 	this->setMinimumSize(450, 200);
 	setMouseTracking(true);
+
+	if (QGuiApplication::platformName() == "xcb") {
+		m_isWayland = false;
+		qDebug() << "X11 detected";
+		setWindowFlags(windowFlags() | Qt::X11BypassWindowManagerHint);
+		setAttribute(Qt::WA_X11DoNotAcceptFocus);
+	} else {
+		qDebug() << "Wayland detected";
+	}
+
 	initUinput();
 	setupUI();
 }
@@ -157,7 +167,23 @@ void VirtualKeyboard::showEvent(QShowEvent *event) {
 	QWidget::showEvent(event);
 	
 	if (windowHandle()) {
-		if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
+		QSettings settings(APP_NAME, "VirtualKeyboard");
+		int sw = QGuiApplication::primaryScreen()->size().width();
+		int sh = QGuiApplication::primaryScreen()->size().height();
+		int defW = sw * 0.6;
+		int defL = (sw - defW) / 2;
+		int defT = sh - 350;
+
+		int w = settings.value("geometry/width", defW).toInt();
+		int h = settings.value("geometry/height", 300).toInt();
+		int left = settings.value("geometry/left", defL).toInt();
+		int top = settings.value("geometry/top", defT).toInt();
+
+		resize(w, h);
+
+		// bool isWayland = QGuiApplication::platformName().startsWith("wayland");
+		if (m_isWayland && LayerShellQt::Window::get(windowHandle())) {
+			auto lsw = LayerShellQt::Window::get(windowHandle());
 			lsw->setLayer(LayerShellQt::Window::LayerOverlay);
 
 			// CRITICAL: InteractivityNone allows clicks to pass THROUGH the 
@@ -172,21 +198,10 @@ void VirtualKeyboard::showEvent(QShowEvent *event) {
 			LayerShellQt::Window::Anchors anchors(LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorLeft);
 			lsw->setAnchors(anchors);
 			lsw->setExclusiveZone(0);
-			
-			QSettings settings(APP_NAME, "VirtualKeyboard");
-			int sw = QGuiApplication::primaryScreen()->size().width();
-			int sh = QGuiApplication::primaryScreen()->size().height();
-			int defW = sw * 0.6;
-			int defL = (sw - defW) / 2;
-			int defT = sh - 350;
-
-			int w = settings.value("geometry/width", defW).toInt();
-			int h = settings.value("geometry/height", 300).toInt();
-			int left = settings.value("geometry/left", defL).toInt();
-			int top = settings.value("geometry/top", defT).toInt();
-
-			resize(w, h);
 			lsw->setMargins(QMargins(left, top, 0, 0));
+		} else {
+			// X11 or other fallback
+			move(left, top);
 		}
 	}
 	updateKeyCaps();
@@ -372,11 +387,17 @@ void VirtualKeyboard::saveSettings() {
 
 	settings.setValue("geometry/width", width());
 	settings.setValue("geometry/height", height());
+
 	if (windowHandle()) {
-		if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
+		// bool isWayland = QGuiApplication::platformName().startsWith("wayland");
+		if (m_isWayland && LayerShellQt::Window::get(windowHandle())) {
+			auto lsw = LayerShellQt::Window::get(windowHandle());
 			QMargins m = lsw->margins();
 			settings.setValue("geometry/left", m.left());
 			settings.setValue("geometry/top", m.top());
+		} else {
+			settings.setValue("geometry/left", x());
+			settings.setValue("geometry/top", y());
 		}
 	}
 
@@ -692,37 +713,42 @@ void VirtualKeyboard::mousePressEvent(QMouseEvent *event) {
 
 void VirtualKeyboard::mouseMoveEvent(QMouseEvent *event) {
 	if (event->buttons() & Qt::LeftButton) {
-		if (auto lsw = LayerShellQt::Window::get(windowHandle())) {
-			QPoint currentGlobalPos = event->globalPosition().toPoint();
-			QPoint delta = currentGlobalPos - m_dragPosition;
-			// Note: We DO NOT update m_dragPosition here if we want a single delta 
-			// from the start of the click to the release.
+		QPoint currentGlobalPos = event->globalPosition().toPoint();
+		QPoint delta = currentGlobalPos - m_dragPosition;
+		// Note: We DO NOT update m_dragPosition here if we want a single delta
+		// from the start of the click to the release.
+		// bool isWayland = QGuiApplication::platformName().startsWith("wayland");
+
+		if (m_isWayland && LayerShellQt::Window::get(windowHandle())) {
+			auto lsw = LayerShellQt::Window::get(windowHandle());
 
 			if (m_currentEdge == Right) {
-				// Keep resize in real-time as it's usually smoother than moving
-				int nw = qMax(450, width() + delta.x());
-				int nh = qMax(250, height() + delta.y());
-				this->setFixedSize(nw, nh);
-
+				setFixedSize(qMax(450, width() + delta.x()), qMax(250, height() + delta.y()));
 				// Updating this when moving will add lag
 				m_dragPosition = currentGlobalPos; // Update for next move increment
 
-			}else if (m_currentEdge == Move) {
-				QPoint currentGlobalPos = event->globalPosition().toPoint();
-                QPoint delta = currentGlobalPos - m_dragPosition;
-                
-                QMargins m = lsw->margins();
-                lsw->setMargins(QMargins(m.left() + delta.x(), m.top() + delta.y(), m.right(), m.bottom()));
-                
+			} else if (m_currentEdge == Move) {
+				QMargins m = lsw->margins();
+				lsw->setMargins(QMargins(m.left() + delta.x(), m.top() + delta.y(), m.right(), m.bottom()));
+
 				// Force the compositor to recognize the change
 				// This triggers a buffer commit in the Qt Wayland backend
-				this->update(); 
+				this->update();
 
-				// If this->update() doesn't snap it into place immediately, try 
+				// If this->update() doesn't snap it into place immediately, try
 				// windowHandle()->requestUpdate();
-				
+
 				// Optional: Re-applying the size often forces a layout sync in KWin/Wlroots
 				// this->resize(this->size());
+			}
+		} else {
+			// X11 logic
+			if (m_currentEdge == Right) {
+				resize(qMax(450, width() + delta.x()), qMax(250, height() + delta.y()));
+				m_dragPosition = currentGlobalPos;
+			} else if (m_currentEdge == Move) {
+				move(pos() + delta);
+				m_dragPosition = currentGlobalPos;
 			}
 		}
 	}
