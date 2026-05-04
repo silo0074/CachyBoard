@@ -1,3 +1,6 @@
+* 2026-05-04 Liviu Istrate <github.com@silo0074> - 1.0.3
+- Support for X11
+
 * 2026-04-26 Liviu Istrate <github.com@silo0074> - 1.0.2
 - New click sounds included
 - New Light 3D style

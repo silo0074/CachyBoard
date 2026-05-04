@@ -2,14 +2,14 @@ cmake_minimum_required(VERSION 3.16)
 
 # Project info
 project(CachyBoard
-    VERSION 1.0.2 
+    VERSION 1.0.3 
     LANGUAGES CXX
 )
 set(PROJECT_RELEASE 1) # package version
 
 # Create a lowercase variable
-string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 # Result: PROJECT_NAME_LOWER = "cachyboard"
+string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 
 # Pass the version to C++ as a macro
 add_definitions(-DAPP_VERSION="${PROJECT_VERSION}")
@@ -38,7 +38,7 @@ find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(XKBCOMMON REQUIRED xkbcommon)
 
-add_executable(${PROJECT_NAME}
+add_executable(${PROJECT_NAME_LOWER}
     main.cpp
     VirtualKeyboard.cpp
     VirtualKeyboard.h
@@ -46,10 +46,10 @@ add_executable(${PROJECT_NAME}
 )
 
 # Tell the compiler to look in the build directory for the generated header
-target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_include_directories(${PROJECT_NAME_LOWER} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 include_directories(${XKBCOMMON_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME_LOWER}
     Qt6::Widgets
     Qt6::Multimedia
     LayerShellQt::Interface
@@ -60,7 +60,7 @@ target_link_libraries(${PROJECT_NAME}
 include(GNUInstallDirs)
 
 # Install the Executable
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME_LOWER}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
@@ -75,7 +75,7 @@ install(FILES "assets/${PROJECT_NAME_LOWER}.svg"
 )
 
 # --- CPACK CONFIGURATION ---
-set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME_LOWER})
 set(CPACK_PACKAGE_VENDOR "Liviu Istrate")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_RELEASE ${PROJECT_RELEASE})
@@ -91,7 +91,7 @@ else()
 endif()
 
 # Force the filename format for DEB and RPM
-set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-${PROJECT_RELEASE}-${CPACK_SYSTEM_NAME}")
+set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME_LOWER}-${PROJECT_VERSION}-${PROJECT_RELEASE}-${CPACK_SYSTEM_NAME}")
 
 # Specific for Debian to follow convention (all lowercase often preferred)
 set(CPACK_DEBIAN_PACKAGE_NAME "${PROJECT_NAME_LOWER}")

@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     // Set the desktop file name (for taskbar/Wayland)
 	// This must match the 'StartupWMClass' in the .desktop file
     QGuiApplication::setDesktopFileName(APP_NAME_LOWER); // Matches cachyboard.desktop
-    a.setApplicationName(APP_NAME);
+    a.setApplicationName(APP_NAME_LOWER);
     // a.setOrganizationName("CachyOS");
 	
 	// Create a temporary path for the lock file.
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 	// is still active. If the PID is dead, it will automatically break the old lock
 	// and let the new instance start.
 	QString tmpDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-	QLockFile lockFile(tmpDir + "/" + APP_NAME + "_unique_lock.lock");
+	QLockFile lockFile(tmpDir + "/" + APP_NAME_LOWER + "_unique_lock.lock");
 	
 	// Try to lock the file. If it fails, another instance is running.
 	if (!lockFile.tryLock(100)) { // Wait 100ms to be sure

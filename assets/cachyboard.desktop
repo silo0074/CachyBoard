@@ -2,7 +2,7 @@
 Categories=Utility;
 Comment[en_US]=Wayland Virtual Keyboard
 Comment=Wayland Virtual Keyboard
-Exec=CachyBoard
+Exec=cachyboard
 GenericName[en_US]=
 GenericName=
 Icon=cachyboard

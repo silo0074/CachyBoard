@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.3] - 2026-05-04
+### Added
+- Support for X11
+
 ## [1.0.2] - 2026-04-26
 ### Added
 - New click sounds included
