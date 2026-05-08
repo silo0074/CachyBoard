@@ -33,6 +33,7 @@
 // Using libcanberra
 // 147708 /usr/bin/cachyboard
 
+// If no sound can be heard, check Settings -> Sounds and ensure Notification Sounds is not muted.
 
 
 int main(int argc, char *argv[]) {

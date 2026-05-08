@@ -27,22 +27,6 @@
 #include <QStandardPaths>
 #include <canberra.h>
 
-// QString getSoundPath(const QString &fileName) {
-//     // 1. Check for a user-overridden sound in ~/.local/share/cachyboard/sounds/
-//     QString userPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/sounds/" + fileName;
-//     if (QFile::exists(userPath)) return userPath;
-
-//     // 2. Check for system-installed sounds in /usr/share/cachyboard/sounds/
-//     // QStandardPaths::GenericDataLocation usually returns /usr/share and ~/.local/share
-//     QStringList systemPaths = QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
-//     for (const QString &path : systemPaths) {
-//         QString fullPath = path + "/cachyboard/sounds/" + fileName;
-//         if (QFile::exists(fullPath)) return fullPath;
-//     }
-
-//     // 3. Fallback to embedded resource
-//     return "qrc:/sounds/click.wav";
-// }
 
 VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	connect(this, &QWidget::destroyed, qApp, &QCoreApplication::quit);
@@ -51,15 +35,33 @@ VirtualKeyboard::VirtualKeyboard(QWidget *parent) : QWidget(parent) {
 	ctx = nullptr;
 	ca_context_create(&ctx);
 
+	// FORCE the driver to pulse (which PipeWire uses)
+    // ca_context_set_driver(ctx, "pulse");
+
+	// Properties to help the sound server identify the app
+    ca_context_change_props(ctx,
+        CA_PROP_APPLICATION_NAME, APP_NAME,
+        // CA_PROP_APPLICATION_ID, "org.cachyos.cachyboard",
+        CA_PROP_APPLICATION_ICON_NAME, APP_NAME_LOWER,
+        NULL
+	);
+    
+    // Optional: Open the backend explicitly to catch initialization errors
+    int res = ca_context_open(ctx);
+    if (res < 0) {
+        qWarning() << "Canberra failed to open context:" << ca_strerror(res);
+    }
+
 	m_syncTimer = new QTimer(this);
 	connect(m_syncTimer, &QTimer::timeout, this, &VirtualKeyboard::syncModifiers);
 	m_syncTimer->start(500); // Check every n ms
 
 	// List all files in the :/sounds resource directory
-	QDirIterator it(":/sounds", QDirIterator::Subdirectories);
-	while (it.hasNext()) {
-		qDebug() << "Found resource:" << it.next();
-	}
+	// Canberra cannot read resource file
+	// QDirIterator it(":/sounds", QDirIterator::Subdirectories);
+	// while (it.hasNext()) {
+	// 	qDebug() << "Found resource:" << it.next();
+	// }
 
 	// Basic setup
 	setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool | Qt::WindowStaysOnTopHint);
@@ -428,12 +430,25 @@ QPushButton *VirtualKeyboard::createKey(int keycode, const QString &label, const
 
 	connect(btn, &QPushButton::pressed, [this, keycode, btn]() {
 		// if (m_clickSound->isLoaded()) m_clickSound->play();
+
 		if (ctx && !m_currentSoundPath.isEmpty()) {
-			ca_context_play(ctx, 0,
-				CA_PROP_EVENT_ID, "button-pressed",
+			// Using 0 for the id (second param) allows overlapping sounds
+			int res = ca_context_play(ctx, 0,
 				CA_PROP_MEDIA_FILENAME, m_currentSoundPath.toUtf8().constData(),
+				CA_PROP_CANBERRA_CACHE_CONTROL, "permanent", // Keeps the wav in memory
+				CA_PROP_EVENT_DESCRIPTION, "key-click",
 				NULL
 			);
+
+			if (res < 0) {
+				qWarning() << "Canberra play error:" << ca_strerror(res);
+			}
+
+			// ca_context_play(ctx, 0,
+			// 	CA_PROP_EVENT_ID, "button-pressed",
+			// 	CA_PROP_MEDIA_FILENAME, m_currentSoundPath.toUtf8().constData(),
+			// 	NULL
+			// );
 		}
 
 		if (keycode == KEY_LEFTCTRL) {
